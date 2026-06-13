@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Peta Sensus SLS</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --ink:#1d2a24;
+    --paper:#f4f1e8;
+    --green:#2f6e4f;
+    --green-deep:#1f4d37;
+    --amber:#c98a3c;
+    --line:#d8d2c2;
+    --white:#ffffff;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html, body{
+    font-family:'Segoe UI', system-ui, sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    height:100%;
+    overflow:hidden;
+  }
+  .app{
+    display:flex;
+    flex-direction:column;
+    height:100vh;
+  }
+  header{
+    background:var(--green-deep);
+    color:var(--white);
+    padding:14px 18px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:10px;
+    box-shadow:0 2px 6px rgba(0,0,0,0.15);
+    z-index:1000;
+  }
+  header h1{
+    font-size:18px;
+    font-weight:700;
+    letter-spacing:0.3px;
+  }
+  header h1 span{
+    display:block;
+    font-size:11px;
+    font-weight:400;
+    opacity:0.75;
+    letter-spacing:0.5px;
+    text-transform:uppercase;
+  }
+  .stats{
+    display:flex;
+    gap:14px;
+    font-size:13px;
+  }
+  .stat{
+    background:rgba(255,255,255,0.12);
+    border-radius:8px;
+    padding:6px 12px;
+    text-align:center;
+    min-width:60px;
+  }
+  .stat b{display:block; font-size:16px;}
+  .main{
+    flex:1;
+    display:flex;
+    min-height:0;
+    position:relative;
+  }
+  #map{
+    flex:1;
+    height:100%;
+  }
+  .hint{
+    position:absolute;
+    bottom:14px;
+    left:50%;
+    transform:translateX(-50%);
+    background:var(--white);
+    border:1px solid var(--line);
+    border-radius:999px;
+    padding:8px 18px;
+    font-size:13px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.12);
+    z-index:500;
+    color:var(--green-deep);
+    font-weight:600;
+    white-space:nowrap;
+  }
+  .layer-toggle{
+    position:absolute;
+    top:14px;
+    right:14px;
+    z-index:500;
+    background:var(--white);
+    border:1px solid var(--line);
+    border-radius:10px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.12);
+    overflow:hidden;
+    display:flex;
+  }
+  .layer-toggle button{
+    border:none;
+    background:var(--white);
+    padding:9px 14px;
+    font-size:12px;
+    font-weight:700;
+    cursor:pointer;
+    color:var(--green-deep);
+  }
+  .layer-toggle button.active{
+    background:var(--green-deep);
+    color:white;
+  }
+  .gps-toggle{
+    position:absolute;
+    top:14px;
+    left:14px;
+    z-index:500;
+    background:var(--white);
+    border:1px solid var(--line);
+    border-radius:10px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.12);
+    padding:9px 14px;
+    font-size:12px;
+    font-weight:700;
+    cursor:pointer;
+    color:var(--green-deep);
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .gps-toggle.active{
+    background:var(--green);
+    color:white;
+    border-color:var(--green);
+  }
+  .gps-dot{
+    width:14px; height:14px; border-radius:50%;
+    background:#2b8aef; border:3px solid white;
+    box-shadow:0 0 0 4px rgba(43,138,239,0.3), 0 1px 4px rgba(0,0,0,0.3);
+  }
+  .gps-pulse{
+    width:14px; height:14px; border-radius:50%;
+    background:rgba(43,138,239,0.35);
+    animation: pulse 1.6s infinite;
+  }
+  @keyframes pulse{
+    0%{ transform:scale(1); opacity:0.7; }
+    70%{ transform:scale(3.2); opacity:0; }
+    100%{ transform:scale(3.2); opacity:0; }
+  }
+  .panel{
+    width:320px;
+    background:var(--white);
+    border-left:1px solid var(--line);
+    overflow-y:auto;
+    flex-shrink:0;
+    display:flex;
+    flex-direction:column;
+  }
+  .panel-section{
+    padding:16px;
+    border-bottom:1px solid var(--line);
+  }
+  .panel-section h2{
+    font-size:13px;
+    text-transform:uppercase;
+    letter-spacing:0.8px;
+    color:var(--green-deep);
+    margin-bottom:10px;
+    font-weight:700;
+  }
+  label{
+    display:block;
+    font-size:12px;
+    font-weight:600;
+    color:#5a5347;
+    margin-bottom:4px;
+    margin-top:10px;
+  }
+  input, textarea, select{
+    width:100%;
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:8px 10px;
+    font-size:13px;
+    font-family:inherit;
+    background:var(--paper);
+    color:var(--ink);
+  }
+  textarea{resize:vertical; min-height:50px;}
+  .status-row{
+    display:flex;
+    gap:8px;
+    margin-top:6px;
+  }
+  .status-btn{
+    flex:1;
+    padding:8px;
+    border-radius:6px;
+    border:2px solid var(--line);
+    background:var(--white);
+    font-size:12px;
+    font-weight:700;
+    cursor:pointer;
+    text-align:center;
+    transition:all .15s;
+  }
+  .status-btn.done.active{
+    border-color:var(--green);
+    background:var(--green);
+    color:white;
+  }
+  .status-btn.todo.active{
+    border-color:var(--amber);
+    background:var(--amber);
+    color:white;
+  }
+  .actions{
+    display:flex;
+    gap:8px;
+    margin-top:14px;
+  }
+  button.primary{
+    flex:1;
+    background:var(--green-deep);
+    color:white;
+    border:none;
+    border-radius:6px;
+    padding:10px;
+    font-size:13px;
+    font-weight:700;
+    cursor:pointer;
+  }
+  button.primary:hover{background:var(--green);}
+  button.danger{
+    background:var(--white);
+    color:#b3473a;
+    border:1px solid #b3473a;
+    border-radius:6px;
+    padding:10px 14px;
+    font-size:13px;
+    font-weight:700;
+    cursor:pointer;
+  }
+  button.danger:hover{background:#fbeceb;}
+  .empty-note{
+    padding:16px;
+    font-size:13px;
+    color:#8a8275;
+    line-height:1.6;
+  }
+  .list-item{
+    padding:10px 16px;
+    border-bottom:1px solid var(--line);
+    cursor:pointer;
+    font-size:13px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .list-item:hover{background:var(--paper);}
+  .dot{
+    width:10px; height:10px; border-radius:50%;
+    flex-shrink:0;
+  }
+  .dot.done{background:var(--green);}
+  .dot.todo{background:var(--amber);}
+  .list-item .meta{flex:1; min-width:0;}
+  .list-item .meta .num{font-weight:700;}
+  .list-item .meta .name{color:#8a8275; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .search-box{
+    padding:12px 16px;
+    border-bottom:1px solid var(--line);
+  }
+  .leaflet-marker-icon.done-pin{filter: hue-rotate(0deg);}
+  @media (max-width: 720px){
+    .main{flex-direction:column;}
+    .panel{width:100%; max-height:45%; border-left:none; border-top:1px solid var(--line);}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Peta Sensus<span>Penanda rumah per SLS</span></h1>
+    <div class="stats">
+      <div class="stat"><b id="statTotal">0</b>Total</div>
+      <div class="stat" style="background:rgba(76,175,80,0.25)"><b id="statDone">0</b>Sudah</div>
+      <div class="stat" style="background:rgba(255,193,7,0.25)"><b id="statTodo">0</b>Belum</div>
+    </div>
+  </header>
+  <div class="main">
+    <div id="map"></div>
+    <div class="layer-toggle">
+      <button id="btnStreet" class="active" onclick="setLayer('street')">Peta</button>
+      <button id="btnSat" onclick="setLayer('sat')">Satelit</button>
+    </div>
+    <div class="gps-toggle" id="gpsToggle" onclick="toggleGPS()">
+      <span id="gpsIcon">📍</span><span id="gpsLabel">Lacak GPS</span>
+    </div>
+    <div class="hint">📍 Klik di peta untuk menambah rumah baru</div>
+    <div class="panel">
+      <div class="search-box">
+        <input id="searchBox" placeholder="Cari nama KK / no. rumah...">
+      </div>
+      <div id="formSection"></div>
+      <div id="listSection" style="flex:1; overflow-y:auto;"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+let map = L.map('map', {maxZoom: 21}).setView([-6.2088, 106.8456], 15); // default Jakarta
+
+const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19,
+  attribution: '&copy; OpenStreetMap contributors'
+});
+
+const satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+  maxZoom: 21,
+  maxNativeZoom: 19,
+  attribution: 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics'
+});
+
+streetLayer.addTo(map);
+let currentLayer = 'street';
+
+function setLayer(type){
+  if(type === currentLayer) return;
+  if(currentLayer === 'street'){
+    map.removeLayer(streetLayer);
+  } else {
+    map.removeLayer(satLayer);
+  }
+  if(type === 'street'){
+    streetLayer.addTo(map);
+    document.getElementById('btnStreet').classList.add('active');
+    document.getElementById('btnSat').classList.remove('active');
+  } else {
+    satLayer.addTo(map);
+    document.getElementById('btnSat').classList.add('active');
+    document.getElementById('btnStreet').classList.remove('active');
+  }
+  currentLayer = type;
+}
+
+// try to locate user
+map.locate({setView:true, maxZoom:18});
+
+// --- GPS Live Tracking ---
+let gpsActive = false;
+let gpsWatchId = null;
+let gpsMarker = null;
+let gpsAccCircle = null;
+
+function toggleGPS(){
+  if(gpsActive){
+    if(gpsWatchId !== null) navigator.geolocation.clearWatch(gpsWatchId);
+    gpsWatchId = null;
+    gpsActive = false;
+    document.getElementById('gpsToggle').classList.remove('active');
+    document.getElementById('gpsLabel').textContent = 'Lacak GPS';
+    document.getElementById('gpsIcon').textContent = '📍';
+    if(gpsMarker){ map.removeLayer(gpsMarker); gpsMarker = null; }
+    if(gpsAccCircle){ map.removeLayer(gpsAccCircle); gpsAccCircle = null; }
+    return;
+  }
+  if(!navigator.geolocation){
+    alert('Perangkat ini tidak mendukung GPS.');
+    return;
+  }
+  gpsActive = true;
+  document.getElementById('gpsToggle').classList.add('active');
+  document.getElementById('gpsLabel').textContent = 'Melacak...';
+  document.getElementById('gpsIcon').textContent = '🛰️';
+
+  gpsWatchId = navigator.geolocation.watchPosition(pos => {
+    const latlng = [pos.coords.latitude, pos.coords.longitude];
+    const acc = pos.coords.accuracy;
+
+    if(!gpsMarker){
+      const icon = L.divIcon({
+        html: `<div style="position:relative;"><div class="gps-pulse" style="position:absolute;"></div><div class="gps-dot"></div></div>`,
+        className:'', iconSize:[14,14], iconAnchor:[7,7]
+      });
+      gpsMarker = L.marker(latlng, {icon, zIndexOffset:1000}).addTo(map);
+      gpsAccCircle = L.circle(latlng, {radius:acc, color:'#2b8aef', weight:1, fillOpacity:0.08}).addTo(map);
+      map.setView(latlng, 18);
+      document.getElementById('gpsLabel').textContent = 'Lacak Aktif';
+    } else {
+      gpsMarker.setLatLng(latlng);
+      gpsAccCircle.setLatLng(latlng);
+      gpsAccCircle.setRadius(acc);
+    }
+  }, err => {
+    document.getElementById('gpsLabel').textContent = 'Gagal akses GPS';
+    document.getElementById('gpsIcon').textContent = '⚠️';
+  }, {
+    enableHighAccuracy: true,
+    maximumAge: 1000,
+    timeout: 10000
+  });
+}
+
+// --- Supabase setup ---
+const SUPABASE_URL = 'https://ojybnopbaipceyttetyx.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qeWJub3BiYWlwY2V5dHRldHl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzMzkwMzEsImV4cCI6MjA5NjkxNTAzMX0.n00jlGfOGHWPfy-V2ohI7SGdgUXbm73nYIxGN54EzWQ';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let houses = []; // {id, lat, lng, marker, no, kk, jumlah, catatan, status}
+let selectedId = null;
+
+function makeIcon(status){
+  const color = status === 'done' ? '#2f6e4f' : '#c98a3c';
+  const html = `<div style="
+    width:26px;height:26px;border-radius:50%;
+    background:${color}; border:3px solid white;
+    box-shadow:0 1px 4px rgba(0,0,0,0.4);
+    display:flex; align-items:center; justify-content:center;
+    color:white; font-size:11px; font-weight:700;">${status==='done'?'✓':'!'}</div>`;
+  return L.divIcon({html, className:'', iconSize:[26,26], iconAnchor:[13,13]});
+}
+
+function addHouseToMap(row){
+  const marker = L.marker([row.lat, row.lng], {icon: makeIcon(row.status), draggable:true}).addTo(map);
+  const house = {
+    id: row.id, lat: row.lat, lng: row.lng, marker,
+    no: row.no || '', kk: row.kk || '', jumlah: row.jumlah || '', catatan: row.catatan || '', status: row.status || 'todo'
+  };
+  marker.bindPopup(popupContent(house));
+  marker.on('click', () => selectHouse(house.id));
+  marker.on('dragend', async (ev) => {
+    house.lat = ev.target.getLatLng().lat;
+    house.lng = ev.target.getLatLng().lng;
+    await sb.from('houses').update({lat: house.lat, lng: house.lng}).eq('id', house.id);
+  });
+  houses.push(house);
+  return house;
+}
+
+async function loadHouses(){
+  const { data, error } = await sb.from('houses').select('*');
+  if(error){
+    console.error(error);
+    alert('Gagal memuat data dari server: ' + error.message);
+    return;
+  }
+  data.forEach(addHouseToMap);
+  renderList();
+  updateStats();
+}
+
+map.on('click', async function(e){
+  const { data, error } = await sb.from('houses').insert({
+    lat: e.latlng.lat, lng: e.latlng.lng,
+    no: '', kk: '', jumlah: '', catatan: '', status: 'todo'
+  }).select().single();
+  if(error){
+    alert('Gagal menyimpan ke server: ' + error.message);
+    return;
+  }
+  const house = addHouseToMap(data);
+  selectHouse(house.id);
+  renderList();
+  updateStats();
+});
+
+function selectHouse(id){
+  selectedId = id;
+  renderForm();
+  renderList();
+}
+
+function renderForm(){
+  const section = document.getElementById('formSection');
+  if(!selectedId){
+    section.innerHTML = `<div class="empty-note">Belum ada rumah dipilih. Klik di peta untuk menandai rumah baru, atau pilih dari daftar di bawah.</div>`;
+    return;
+  }
+  const h = houses.find(x => x.id === selectedId);
+  if(!h){ selectedId = null; renderForm(); return; }
+
+  section.innerHTML = `
+    <div class="panel-section">
+      <h2>Detail Rumah</h2>
+      <label>Status Sensus</label>
+      <div class="status-row">
+        <button class="status-btn done ${h.status==='done'?'active':''}" onclick="setStatus(${h.id},'done')">✓ Sudah</button>
+        <button class="status-btn todo ${h.status==='todo'?'active':''}" onclick="setStatus(${h.id},'todo')">! Belum</button>
+      </div>
+      <label>Nomor Urut Bangunan/Rumah</label>
+      <input id="f_no" value="${escapeHtml(h.no)}" placeholder="contoh: 014B-012">
+      <label>Nama Kepala Keluarga</label>
+      <input id="f_kk" value="${escapeHtml(h.kk)}" placeholder="contoh: Budi Santoso">
+      <label>Jumlah Anggota Keluarga</label>
+      <input id="f_jumlah" type="number" min="0" value="${escapeHtml(h.jumlah)}" placeholder="contoh: 4">
+      <label>Catatan</label>
+      <textarea id="f_catatan" placeholder="catatan tambahan...">${escapeHtml(h.catatan)}</textarea>
+      <div class="actions">
+        <button class="primary" onclick="saveHouse(${h.id})">Simpan</button>
+        <button class="danger" onclick="deleteHouse(${h.id})">Hapus</button>
+      </div>
+    </div>
+  `;
+}
+
+async function setStatus(id, status){
+  const h = houses.find(x=>x.id===id);
+  h.status = status;
+  h.marker.setIcon(makeIcon(status));
+  h.marker.bindPopup(popupContent(h));
+  renderForm();
+  renderList();
+  updateStats();
+  const { error } = await sb.from('houses').update({status}).eq('id', id);
+  if(error) alert('Gagal menyimpan status: ' + error.message);
+}
+
+async function saveHouse(id){
+  const h = houses.find(x=>x.id===id);
+  h.no = document.getElementById('f_no').value;
+  h.kk = document.getElementById('f_kk').value;
+  h.jumlah = document.getElementById('f_jumlah').value;
+  h.catatan = document.getElementById('f_catatan').value;
+  h.marker.bindPopup(popupContent(h));
+  renderList();
+  const { error } = await sb.from('houses').update({
+    no: h.no, kk: h.kk, jumlah: h.jumlah, catatan: h.catatan
+  }).eq('id', id);
+  if(error){
+    alert('Gagal menyimpan ke server: ' + error.message);
+  } else {
+    const btn = event.target;
+    const old = btn.textContent;
+    btn.textContent = 'Tersimpan ✓';
+    setTimeout(()=>{ btn.textContent = old; }, 1200);
+  }
+}
+
+function popupContent(h){
+  return `<b>${escapeHtml(h.no || 'Tanpa nomor')}</b><br>${escapeHtml(h.kk || '-')}<br>
+  Anggota: ${escapeHtml(h.jumlah || '-')}<br>
+  Status: ${h.status==='done' ? '✅ Sudah disensus' : '⏳ Belum disensus'}`;
+}
+
+async function deleteHouse(id){
+  if(!confirm('Hapus rumah ini?')) return;
+  const h = houses.find(x=>x.id===id);
+  map.removeLayer(h.marker);
+  houses = houses.filter(x=>x.id!==id);
+  selectedId = null;
+  renderForm();
+  renderList();
+  updateStats();
+  const { error } = await sb.from('houses').delete().eq('id', id);
+  if(error) alert('Gagal menghapus di server: ' + error.message);
+}
+
+function renderList(filter=''){
+  const section = document.getElementById('listSection');
+  let list = houses;
+  if(filter){
+    const f = filter.toLowerCase();
+    list = houses.filter(h =>
+      (h.no||'').toLowerCase().includes(f) ||
+      (h.kk||'').toLowerCase().includes(f)
+    );
+  }
+  if(list.length === 0){
+    section.innerHTML = `<div class="empty-note">${houses.length===0 ? 'Belum ada rumah yang ditandai.' : 'Tidak ada hasil.'}</div>`;
+    return;
+  }
+  section.innerHTML = list.map(h => `
+    <div class="list-item" onclick="focusHouse(${h.id})">
+      <div class="dot ${h.status}"></div>
+      <div class="meta">
+        <div class="num">${escapeHtml(h.no || 'Rumah #'+h.id)}</div>
+        <div class="name">${escapeHtml(h.kk || 'Belum ada nama')}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function focusHouse(id){
+  const h = houses.find(x=>x.id===id);
+  map.setView([h.lat, h.lng], Math.max(map.getZoom(), 17));
+  h.marker.openPopup();
+  selectHouse(id);
+}
+
+function updateStats(){
+  document.getElementById('statTotal').textContent = houses.length;
+  document.getElementById('statDone').textContent = houses.filter(h=>h.status==='done').length;
+  document.getElementById('statTodo').textContent = houses.filter(h=>h.status==='todo').length;
+}
+
+function escapeHtml(s){
+  return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+document.getElementById('searchBox').addEventListener('input', e => renderList(e.target.value));
+
+renderForm();
+renderList();
+updateStats();
+loadHouses();
+</script>
+</body>
+</html>
