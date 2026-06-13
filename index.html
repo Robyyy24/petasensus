@@ -5,7 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Peta Sensus SLS</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
@@ -142,6 +144,64 @@
     color:white;
     border-color:var(--green);
   }
+  .boundary-toggle{
+    position:absolute;
+    top:60px;
+    left:14px;
+    z-index:500;
+    background:var(--white);
+    border:1px solid var(--line);
+    border-radius:10px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.12);
+    padding:9px 14px;
+    font-size:12px;
+    font-weight:700;
+    cursor:pointer;
+    color:var(--green-deep);
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .boundary-toggle.editing{
+    background:var(--amber);
+    color:white;
+    border-color:var(--amber);
+  }
+  .boundary-item{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    padding:8px 12px;
+    border-bottom:1px solid var(--line);
+    font-size:12px;
+  }
+  .boundary-item input.bname{
+    flex:1;
+    border:none;
+    background:transparent;
+    font-size:12px;
+    font-weight:700;
+    color:var(--ink);
+    padding:4px 2px;
+  }
+  .boundary-item input.bname:focus{
+    background:var(--paper);
+    border-radius:4px;
+  }
+  .bicon{
+    width:12px;height:12px;border-radius:3px;
+    flex-shrink:0;
+  }
+  .bbtn{
+    border:1px solid var(--line);
+    background:var(--white);
+    border-radius:6px;
+    padding:4px 7px;
+    font-size:12px;
+    cursor:pointer;
+  }
+  .bbtn.locked{background:#fbeceb; border-color:#b3473a;}
+  .bbtn.editing-active{background:var(--amber); color:white; border-color:var(--amber);}
   .gps-dot{
     width:14px; height:14px; border-radius:50%;
     background:#2b8aef; border:3px solid white;
@@ -307,11 +367,15 @@
     <div class="gps-toggle" id="gpsToggle" onclick="toggleGPS()">
       <span id="gpsIcon">📍</span><span id="gpsLabel">Lacak GPS</span>
     </div>
+    <div class="boundary-toggle" id="boundaryToggle" onclick="startNewBoundary()">
+      <span id="boundaryIcon">➕</span><span id="boundaryLabel">Tambah Batas SLS</span>
+    </div>
     <div class="hint">📍 Klik di peta untuk menambah rumah baru</div>
     <div class="panel">
       <div class="search-box">
         <input id="searchBox" placeholder="Cari nama KK / no. rumah...">
       </div>
+      <div id="boundarySection"></div>
       <div id="formSection"></div>
       <div id="listSection" style="flex:1; overflow-y:auto;"></div>
     </div>
@@ -460,7 +524,183 @@ async function loadHouses(){
   updateStats();
 }
 
+// --- Batas Wilayah (multi SLS/Sub-SLS) ---
+const boundaryLayerGroup = L.featureGroup().addTo(map);
+let boundaries = []; // {id, name, geojson, locked, layer}
+let editingBoundary = false; // global flag: sedang menggambar/edit batas (disable tambah rumah)
+let editingBoundaryItem = null; // {id, layer} yang sedang diedit
+let drawControl = null;
+let maskLayer = null;
+
+const lockedStyle = {color:'#b3473a', weight:3, dashArray:'8,6', fillOpacity:0, interactive:false};
+const editStyle = {color:'#c98a3c', weight:3, dashArray:'4,4', fillOpacity:0, interactive:true};
+
+const WORLD_RING = [[-89,-179],[-89,179],[89,179],[89,-179]];
+
+function refreshMask(){
+  if(maskLayer) map.removeLayer(maskLayer);
+  if(boundaries.length === 0) return;
+  const rings = [WORLD_RING, ...boundaries.map(b => JSON.parse(b.geojson))];
+  maskLayer = L.polygon(rings, {
+    color: 'transparent', weight:0,
+    fillColor:'#555', fillOpacity:0.35,
+    interactive:false
+  }).addTo(map);
+  maskLayer.bringToBack();
+  if(streetLayer && map.hasLayer(streetLayer)) {/* keep tiles below mask automatically */}
+}
+
+async function loadBoundary(){
+  const { data, error } = await sb.from('boundaries').select('*').order('id');
+  if(error){
+    console.warn('Tabel boundaries belum ada / error:', error.message);
+    return;
+  }
+  boundaries = data || [];
+  boundaries.forEach(b => {
+    const latlngs = JSON.parse(b.geojson);
+    b.layer = L.polygon(latlngs, b.locked ? lockedStyle : editStyle).addTo(boundaryLayerGroup);
+    b.layer.bindTooltip(b.name || 'SLS', {sticky:true});
+  });
+  refreshMask();
+  renderBoundaryList();
+  if(boundaries.length > 0){
+    const group = L.featureGroup(boundaries.map(b=>b.layer));
+    map.fitBounds(group.getBounds(), {maxZoom: 17});
+  }
+}
+
+function renderBoundaryList(){
+  const section = document.getElementById('boundarySection');
+  if(boundaries.length === 0){
+    section.innerHTML = `<div class="empty-note" style="padding:10px 16px; font-size:12px;">Belum ada batas SLS/Sub-SLS. Klik "Tambah Batas SLS" di peta untuk menggambar.</div>`;
+    return;
+  }
+  section.innerHTML = boundaries.map(b => `
+    <div class="boundary-item">
+      <div class="bicon" style="background:${b.locked ? '#b3473a' : '#c98a3c'}"></div>
+      <input class="bname" value="${escapeHtml(b.name||'')}" placeholder="Nama SLS/Sub-SLS"
+        onchange="renameBoundary(${b.id}, this.value)">
+      <button class="bbtn ${editingBoundaryItem && editingBoundaryItem.id===b.id ? 'editing-active':''}"
+        onclick="toggleEditBoundary(${b.id})">${editingBoundaryItem && editingBoundaryItem.id===b.id ? 'Selesai' : '✏️'}</button>
+      <button class="bbtn ${b.locked?'locked':''}" onclick="toggleLockBoundary(${b.id})">${b.locked ? '🔒' : '🔓'}</button>
+      <button class="bbtn" onclick="deleteBoundary(${b.id})">🗑️</button>
+    </div>
+  `).join('');
+}
+
+async function renameBoundary(id, name){
+  const b = boundaries.find(x=>x.id===id);
+  b.name = name;
+  b.layer.bindTooltip(name || 'SLS', {sticky:true});
+  const { error } = await sb.from('boundaries').update({name}).eq('id', id);
+  if(error) alert('Gagal menyimpan nama: ' + error.message);
+}
+
+function startNewBoundary(){
+  if(editingBoundary){ alert('Selesaikan dulu pengeditan batas yang sedang berjalan.'); return; }
+  editingBoundary = true;
+  document.getElementById('boundaryToggle').classList.add('editing');
+  document.getElementById('boundaryLabel').textContent = 'Klik peta utk gambar...';
+
+  if(!drawControl){
+    drawControl = new L.Control.Draw({
+      position: 'topright',
+      draw: {
+        polygon: { allowIntersection:false, shapeOptions: editStyle },
+        polyline:false, rectangle:false, circle:false, marker:false, circlemarker:false
+      },
+      edit:false
+    });
+  }
+  map.addControl(drawControl);
+
+  function onCreate(e){
+    map.off(L.Draw.Event.CREATED, onCreate);
+    map.removeControl(drawControl);
+    editingBoundary = false;
+    document.getElementById('boundaryToggle').classList.remove('editing');
+    document.getElementById('boundaryLabel').textContent = 'Tambah Batas SLS';
+
+    const layer = e.layer;
+    layer.setStyle(editStyle);
+    boundaryLayerGroup.addLayer(layer);
+    const latlngs = layer.getLatLngs()[0].map(p => [p.lat, p.lng]);
+    saveNewBoundary(latlngs, layer);
+  }
+  map.on(L.Draw.Event.CREATED, onCreate);
+}
+
+async function saveNewBoundary(latlngs, layer){
+  const name = prompt('Nama wilayah ini (contoh: RT 010 RW 003 Dusun 2-01):', 'SLS Baru') || 'SLS Baru';
+  const geojson = JSON.stringify(latlngs);
+  const { data, error } = await sb.from('boundaries').insert({name, geojson, locked:false}).select().single();
+  if(error){
+    alert('Gagal menyimpan batas: ' + error.message);
+    boundaryLayerGroup.removeLayer(layer);
+    return;
+  }
+  data.layer = layer;
+  layer.bindTooltip(data.name, {sticky:true});
+  boundaries.push(data);
+  refreshMask();
+  renderBoundaryList();
+}
+
+function toggleEditBoundary(id){
+  const b = boundaries.find(x=>x.id===id);
+  if(editingBoundaryItem && editingBoundaryItem.id === id){
+    finishEditBoundary();
+    return;
+  }
+  if(editingBoundaryItem){ alert('Selesaikan dulu pengeditan batas lain.'); return; }
+  if(b.locked){ alert('Batas ini terkunci. Buka kunci (🔒) dulu untuk mengedit.'); return; }
+  editingBoundaryItem = b;
+  b.layer.editing.enable();
+  renderBoundaryList();
+}
+
+async function finishEditBoundary(){
+  const b = editingBoundaryItem;
+  b.layer.editing.disable();
+  const latlngs = b.layer.getLatLngs()[0].map(p => [p.lat, p.lng]);
+  const geojson = JSON.stringify(latlngs);
+  const { error } = await sb.from('boundaries').update({geojson}).eq('id', b.id);
+  if(error) alert('Gagal menyimpan perubahan batas: ' + error.message);
+  else b.geojson = geojson;
+  editingBoundaryItem = null;
+  refreshMask();
+  renderBoundaryList();
+}
+
+async function toggleLockBoundary(id){
+  const b = boundaries.find(x=>x.id===id);
+  const newLocked = !b.locked;
+  const { error } = await sb.from('boundaries').update({locked:newLocked}).eq('id', id);
+  if(error){ alert('Gagal mengubah kunci: ' + error.message); return; }
+  b.locked = newLocked;
+  b.layer.setStyle(newLocked ? lockedStyle : editStyle);
+  if(newLocked && editingBoundaryItem && editingBoundaryItem.id===id){
+    b.layer.editing.disable();
+    editingBoundaryItem = null;
+  }
+  renderBoundaryList();
+}
+
+async function deleteBoundary(id){
+  if(!confirm('Hapus batas wilayah ini?')) return;
+  const b = boundaries.find(x=>x.id===id);
+  boundaryLayerGroup.removeLayer(b.layer);
+  boundaries = boundaries.filter(x=>x.id!==id);
+  if(editingBoundaryItem && editingBoundaryItem.id===id) editingBoundaryItem = null;
+  refreshMask();
+  renderBoundaryList();
+  const { error } = await sb.from('boundaries').delete().eq('id', id);
+  if(error) alert('Gagal menghapus di server: ' + error.message);
+}
+
 map.on('click', async function(e){
+  if(editingBoundary) return;
   const { data, error } = await sb.from('houses').insert({
     lat: e.latlng.lat, lng: e.latlng.lng,
     no: '', kk: '', jumlah: '', catatan: '', status: 'todo'
@@ -614,6 +854,7 @@ renderForm();
 renderList();
 updateStats();
 loadHouses();
+loadBoundary();
 </script>
 </body>
 </html>
