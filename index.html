@@ -277,6 +277,19 @@ button.danger:active{background:#fdf0ee;}
   padding:7px 10px;border-bottom:1px solid var(--line);
   font-size:12px;
 }
+.boundary-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:9px 14px;background:var(--paper);
+  border-bottom:1px solid var(--line);cursor:pointer;
+  font-size:11px;text-transform:uppercase;letter-spacing:0.9px;
+  color:var(--bps-orange-deep);font-weight:800;
+  position:sticky;top:0;z-index:5;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation;
+}
+.boundary-header .chev{transition:transform .15s;}
+.boundary-header.collapsed .chev{transform:rotate(-90deg);}
+.boundary-list{overflow:hidden;}
+.boundary-list.collapsed{display:none;}
 .boundary-item input.bname{
   flex:1;border:none;background:transparent;
   font-size:12px;font-weight:700;color:var(--ink);
@@ -515,7 +528,13 @@ button.danger:active{background:#fdf0ee;}
         <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input id="searchBox" placeholder="Cari nama KK / no. rumah...">
       </div>
-      <div id="boundarySection"></div>
+      <div id="boundarySection">
+        <div class="boundary-header" id="boundaryHeader" onclick="toggleBoundarySection()">
+          <span>Batas SLS (<span id="boundaryCount">0</span>)</span>
+          <svg class="icon icon-sm chev" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="boundary-list" id="boundaryList"></div>
+      </div>
       <div id="formSection"></div>
       <div id="listSection" style="flex:1;overflow-y:auto;"></div>
     </div>
@@ -1097,8 +1116,18 @@ async function loadBoundary(){
   }
 }
 
+let boundaryCollapsed = false;
+function toggleBoundarySection(){
+  boundaryCollapsed = !boundaryCollapsed;
+  const header=document.getElementById('boundaryHeader');
+  const list=document.getElementById('boundaryList');
+  header.classList.toggle('collapsed', boundaryCollapsed);
+  list.classList.toggle('collapsed', boundaryCollapsed);
+}
+
 function renderBoundaryList(){
-  const section=document.getElementById('boundarySection');
+  const section=document.getElementById('boundaryList');
+  document.getElementById('boundaryCount').textContent = boundaries.length;
   if(boundaries.length===0){
     section.innerHTML=`<div class="empty-note" style="padding:8px 14px;font-size:12px;">Belum ada batas SLS. Klik "Tambah Batas SLS".</div>`;
     return;
