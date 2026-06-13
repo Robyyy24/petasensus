@@ -202,6 +202,40 @@
   }
   .bbtn.locked{background:#fbeceb; border-color:#b3473a;}
   .bbtn.editing-active{background:var(--amber); color:white; border-color:var(--amber);}
+  .confirm-overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,0.45);
+    display:flex; align-items:center; justify-content:center;
+    z-index:5000;
+  }
+  .confirm-box{
+    background:var(--white);
+    border-radius:12px;
+    padding:20px;
+    max-width:320px;
+    width:90%;
+    box-shadow:0 8px 24px rgba(0,0,0,0.25);
+  }
+  .confirm-box p{
+    font-size:14px;
+    color:var(--ink);
+    line-height:1.5;
+    margin-bottom:16px;
+  }
+  .confirm-actions{
+    display:flex;
+    gap:10px;
+  }
+  .confirm-actions button{
+    flex:1;
+    border-radius:8px;
+    padding:10px;
+    font-size:13px;
+    font-weight:700;
+    border:none;
+    cursor:pointer;
+  }
+  .confirm-actions .yes{background:var(--green-deep); color:white;}
+  .confirm-actions .no{background:var(--paper); color:var(--ink); border:1px solid var(--line);}
   .gps-dot{
     width:14px; height:14px; border-radius:50%;
     background:#2b8aef; border:3px solid white;
@@ -699,20 +733,22 @@ async function deleteBoundary(id){
   if(error) alert('Gagal menghapus di server: ' + error.message);
 }
 
-map.on('click', async function(e){
+map.on('click', function(e){
   if(editingBoundary) return;
-  const { data, error } = await sb.from('houses').insert({
-    lat: e.latlng.lat, lng: e.latlng.lng,
-    no: '', kk: '', jumlah: '', catatan: '', status: 'todo'
-  }).select().single();
-  if(error){
-    alert('Gagal menyimpan ke server: ' + error.message);
-    return;
-  }
-  const house = addHouseToMap(data);
-  selectHouse(house.id);
-  renderList();
-  updateStats();
+  showConfirm('Tambahkan penanda rumah baru di lokasi ini?', async () => {
+    const { data, error } = await sb.from('houses').insert({
+      lat: e.latlng.lat, lng: e.latlng.lng,
+      no: '', kk: '', jumlah: '', catatan: '', status: 'todo'
+    }).select().single();
+    if(error){
+      alert('Gagal menyimpan ke server: ' + error.message);
+      return;
+    }
+    const house = addHouseToMap(data);
+    selectHouse(house.id);
+    renderList();
+    updateStats();
+  });
 });
 
 function selectHouse(id){
@@ -747,44 +783,50 @@ function renderForm(){
       <label>Catatan</label>
       <textarea id="f_catatan" placeholder="catatan tambahan...">${escapeHtml(h.catatan)}</textarea>
       <div class="actions">
-        <button class="primary" onclick="saveHouse(${h.id})">Simpan</button>
+        <button class="primary" id="btnSimpanRumah" onclick="saveHouse(${h.id})">Simpan</button>
         <button class="danger" onclick="deleteHouse(${h.id})">Hapus</button>
       </div>
     </div>
   `;
 }
 
-async function setStatus(id, status){
+function setStatus(id, status){
   const h = houses.find(x=>x.id===id);
-  h.status = status;
-  h.marker.setIcon(makeIcon(status));
-  h.marker.bindPopup(popupContent(h));
-  renderForm();
-  renderList();
-  updateStats();
-  const { error } = await sb.from('houses').update({status}).eq('id', id);
-  if(error) alert('Gagal menyimpan status: ' + error.message);
+  if(h.status === status) return;
+  const label = status === 'done' ? 'Sudah disensus' : 'Belum disensus';
+  showConfirm(`Ubah status rumah ini menjadi "${label}"?`, async () => {
+    h.status = status;
+    h.marker.setIcon(makeIcon(status));
+    h.marker.bindPopup(popupContent(h));
+    renderForm();
+    renderList();
+    updateStats();
+    const { error } = await sb.from('houses').update({status}).eq('id', id);
+    if(error) alert('Gagal menyimpan status: ' + error.message);
+  });
 }
 
-async function saveHouse(id){
-  const h = houses.find(x=>x.id===id);
-  h.no = document.getElementById('f_no').value;
-  h.kk = document.getElementById('f_kk').value;
-  h.jumlah = document.getElementById('f_jumlah').value;
-  h.catatan = document.getElementById('f_catatan').value;
-  h.marker.bindPopup(popupContent(h));
-  renderList();
-  const { error } = await sb.from('houses').update({
-    no: h.no, kk: h.kk, jumlah: h.jumlah, catatan: h.catatan
-  }).eq('id', id);
-  if(error){
-    alert('Gagal menyimpan ke server: ' + error.message);
-  } else {
-    const btn = event.target;
-    const old = btn.textContent;
-    btn.textContent = 'Tersimpan ✓';
-    setTimeout(()=>{ btn.textContent = old; }, 1200);
-  }
+function saveHouse(id){
+  showConfirm('Simpan perubahan data rumah ini?', async () => {
+    const h = houses.find(x=>x.id===id);
+    h.no = document.getElementById('f_no').value;
+    h.kk = document.getElementById('f_kk').value;
+    h.jumlah = document.getElementById('f_jumlah').value;
+    h.catatan = document.getElementById('f_catatan').value;
+    h.marker.bindPopup(popupContent(h));
+    renderList();
+    const btn = document.getElementById('btnSimpanRumah');
+    const { error } = await sb.from('houses').update({
+      no: h.no, kk: h.kk, jumlah: h.jumlah, catatan: h.catatan
+    }).eq('id', id);
+    if(error){
+      alert('Gagal menyimpan ke server: ' + error.message);
+    } else if(btn){
+      const old = btn.textContent;
+      btn.textContent = 'Tersimpan ✓';
+      setTimeout(()=>{ btn.textContent = old; }, 1200);
+    }
+  });
 }
 
 function popupContent(h){
@@ -794,16 +836,17 @@ function popupContent(h){
 }
 
 async function deleteHouse(id){
-  if(!confirm('Hapus rumah ini?')) return;
-  const h = houses.find(x=>x.id===id);
-  map.removeLayer(h.marker);
-  houses = houses.filter(x=>x.id!==id);
-  selectedId = null;
-  renderForm();
-  renderList();
-  updateStats();
-  const { error } = await sb.from('houses').delete().eq('id', id);
-  if(error) alert('Gagal menghapus di server: ' + error.message);
+  showConfirm('Hapus penanda rumah ini? Data yang sudah diisi akan hilang.', async () => {
+    const h = houses.find(x=>x.id===id);
+    map.removeLayer(h.marker);
+    houses = houses.filter(x=>x.id!==id);
+    selectedId = null;
+    renderForm();
+    renderList();
+    updateStats();
+    const { error } = await sb.from('houses').delete().eq('id', id);
+    if(error) alert('Gagal menghapus di server: ' + error.message);
+  });
 }
 
 function renderList(filter=''){
@@ -846,6 +889,24 @@ function updateStats(){
 
 function escapeHtml(s){
   return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function showConfirm(message, onYes, onNo){
+  const overlay = document.createElement('div');
+  overlay.className = 'confirm-overlay';
+  overlay.innerHTML = `
+    <div class="confirm-box">
+      <p>${escapeHtml(message)}</p>
+      <div class="confirm-actions">
+        <button class="no">Batal</button>
+        <button class="yes">Ya, lanjutkan</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  overlay.querySelector('.yes').onclick = () => { document.body.removeChild(overlay); onYes && onYes(); };
+  overlay.querySelector('.no').onclick = () => { document.body.removeChild(overlay); onNo && onNo(); };
+  overlay.onclick = (e) => { if(e.target === overlay){ document.body.removeChild(overlay); onNo && onNo(); } };
 }
 
 document.getElementById('searchBox').addEventListener('input', e => renderList(e.target.value));
