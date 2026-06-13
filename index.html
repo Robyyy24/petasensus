@@ -1,395 +1,493 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Peta Sensus SLS</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Peta Sensus BPS</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-  :root{
-    --ink:#1d2a24;
-    --paper:#f4f1e8;
-    --green:#2f6e4f;
-    --green-deep:#1f4d37;
-    --amber:#c98a3c;
-    --line:#d8d2c2;
-    --white:#ffffff;
-  }
-  *{box-sizing:border-box; margin:0; padding:0;}
-  html, body{
-    font-family:'Segoe UI', system-ui, sans-serif;
-    background:var(--paper);
-    color:var(--ink);
-    height:100%;
-    overflow:hidden;
-  }
-  .app{
-    display:flex;
-    flex-direction:column;
-    height:100vh;
-  }
-  header{
-    background:var(--green-deep);
-    color:var(--white);
-    padding:14px 18px;
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    flex-wrap:wrap;
-    gap:10px;
-    box-shadow:0 2px 6px rgba(0,0,0,0.15);
-    z-index:1000;
-  }
-  header h1{
-    font-size:18px;
-    font-weight:700;
-    letter-spacing:0.3px;
-  }
-  header h1 span{
-    display:block;
-    font-size:11px;
-    font-weight:400;
-    opacity:0.75;
-    letter-spacing:0.5px;
-    text-transform:uppercase;
-  }
-  .stats{
-    display:flex;
-    gap:14px;
-    font-size:13px;
-  }
-  .stat{
-    background:rgba(255,255,255,0.12);
-    border-radius:8px;
-    padding:6px 12px;
-    text-align:center;
-    min-width:60px;
-  }
-  .stat b{display:block; font-size:16px;}
-  .main{
-    flex:1;
-    display:flex;
-    min-height:0;
-    position:relative;
-  }
-  #map{
-    flex:1;
-    height:100%;
-  }
-  .hint{
-    position:absolute;
-    bottom:14px;
-    left:50%;
-    transform:translateX(-50%);
-    background:var(--white);
-    border:1px solid var(--line);
-    border-radius:999px;
-    padding:8px 18px;
-    font-size:13px;
-    box-shadow:0 2px 8px rgba(0,0,0,0.12);
-    z-index:500;
-    color:var(--green-deep);
-    font-weight:600;
-    white-space:nowrap;
-  }
-  .layer-toggle{
-    position:absolute;
-    top:14px;
-    right:14px;
-    z-index:500;
-    background:var(--white);
-    border:1px solid var(--line);
-    border-radius:10px;
-    box-shadow:0 2px 8px rgba(0,0,0,0.12);
-    overflow:hidden;
-    display:flex;
-  }
-  .layer-toggle button{
-    border:none;
-    background:var(--white);
-    padding:9px 14px;
-    font-size:12px;
-    font-weight:700;
-    cursor:pointer;
-    color:var(--green-deep);
-  }
-  .layer-toggle button.active{
-    background:var(--green-deep);
-    color:white;
-  }
-  .gps-toggle{
-    position:absolute;
-    top:14px;
-    left:14px;
-    z-index:500;
-    background:var(--white);
-    border:1px solid var(--line);
-    border-radius:10px;
-    box-shadow:0 2px 8px rgba(0,0,0,0.12);
-    padding:9px 14px;
-    font-size:12px;
-    font-weight:700;
-    cursor:pointer;
-    color:var(--green-deep);
-    display:flex;
-    align-items:center;
-    gap:6px;
-  }
-  .gps-toggle.active{
-    background:var(--green);
-    color:white;
-    border-color:var(--green);
-  }
-  .boundary-toggle{
-    position:absolute;
-    top:60px;
-    left:14px;
-    z-index:500;
-    background:var(--white);
-    border:1px solid var(--line);
-    border-radius:10px;
-    box-shadow:0 2px 8px rgba(0,0,0,0.12);
-    padding:9px 14px;
-    font-size:12px;
-    font-weight:700;
-    cursor:pointer;
-    color:var(--green-deep);
-    display:flex;
-    align-items:center;
-    gap:6px;
-  }
-  .boundary-toggle.editing{
-    background:var(--amber);
-    color:white;
-    border-color:var(--amber);
-  }
-  .boundary-item{
-    display:flex;
-    align-items:center;
-    gap:6px;
-    padding:8px 12px;
-    border-bottom:1px solid var(--line);
-    font-size:12px;
-  }
-  .boundary-item input.bname{
-    flex:1;
-    border:none;
-    background:transparent;
-    font-size:12px;
-    font-weight:700;
-    color:var(--ink);
-    padding:4px 2px;
-  }
-  .boundary-item input.bname:focus{
-    background:var(--paper);
-    border-radius:4px;
-  }
-  .bicon{
-    width:12px;height:12px;border-radius:3px;
-    flex-shrink:0;
-  }
-  .bbtn{
-    border:1px solid var(--line);
-    background:var(--white);
-    border-radius:6px;
-    padding:4px 7px;
-    font-size:12px;
-    cursor:pointer;
-  }
-  .bbtn.locked{background:#fbeceb; border-color:#b3473a;}
-  .bbtn.editing-active{background:var(--amber); color:white; border-color:var(--amber);}
-  .confirm-overlay{
-    position:fixed; inset:0; background:rgba(0,0,0,0.45);
-    display:flex; align-items:center; justify-content:center;
-    z-index:5000;
-  }
-  .confirm-box{
-    background:var(--white);
-    border-radius:12px;
-    padding:20px;
-    max-width:320px;
-    width:90%;
-    box-shadow:0 8px 24px rgba(0,0,0,0.25);
-  }
-  .confirm-box p{
-    font-size:14px;
-    color:var(--ink);
-    line-height:1.5;
-    margin-bottom:16px;
-  }
-  .confirm-actions{
-    display:flex;
-    gap:10px;
-  }
-  .confirm-actions button{
-    flex:1;
-    border-radius:8px;
-    padding:10px;
-    font-size:13px;
-    font-weight:700;
-    border:none;
-    cursor:pointer;
-  }
-  .confirm-actions .yes{background:var(--green-deep); color:white;}
-  .confirm-actions .no{background:var(--paper); color:var(--ink); border:1px solid var(--line);}
-  .gps-dot{
-    width:14px; height:14px; border-radius:50%;
-    background:#2b8aef; border:3px solid white;
-    box-shadow:0 0 0 4px rgba(43,138,239,0.3), 0 1px 4px rgba(0,0,0,0.3);
-  }
-  .gps-pulse{
-    width:14px; height:14px; border-radius:50%;
-    background:rgba(43,138,239,0.35);
-    animation: pulse 1.6s infinite;
-  }
-  @keyframes pulse{
-    0%{ transform:scale(1); opacity:0.7; }
-    70%{ transform:scale(3.2); opacity:0; }
-    100%{ transform:scale(3.2); opacity:0; }
-  }
-  .panel{
-    width:320px;
-    background:var(--white);
-    border-left:1px solid var(--line);
-    overflow-y:auto;
-    flex-shrink:0;
-    display:flex;
-    flex-direction:column;
-  }
-  .panel-section{
-    padding:16px;
-    border-bottom:1px solid var(--line);
-  }
-  .panel-section h2{
-    font-size:13px;
-    text-transform:uppercase;
-    letter-spacing:0.8px;
-    color:var(--green-deep);
-    margin-bottom:10px;
-    font-weight:700;
-  }
-  label{
-    display:block;
-    font-size:12px;
-    font-weight:600;
-    color:#5a5347;
-    margin-bottom:4px;
-    margin-top:10px;
-  }
-  input, textarea, select{
-    width:100%;
-    border:1px solid var(--line);
-    border-radius:6px;
-    padding:8px 10px;
-    font-size:13px;
-    font-family:inherit;
-    background:var(--paper);
-    color:var(--ink);
-  }
-  textarea{resize:vertical; min-height:50px;}
-  .status-row{
-    display:flex;
-    gap:8px;
-    margin-top:6px;
-  }
-  .status-btn{
-    flex:1;
-    padding:8px;
-    border-radius:6px;
-    border:2px solid var(--line);
-    background:var(--white);
-    font-size:12px;
-    font-weight:700;
-    cursor:pointer;
-    text-align:center;
-    transition:all .15s;
-  }
-  .status-btn.done.active{
-    border-color:var(--green);
-    background:var(--green);
-    color:white;
-  }
-  .status-btn.todo.active{
-    border-color:var(--amber);
-    background:var(--amber);
-    color:white;
-  }
-  .actions{
-    display:flex;
-    gap:8px;
-    margin-top:14px;
-  }
-  button.primary{
-    flex:1;
-    background:var(--green-deep);
-    color:white;
-    border:none;
-    border-radius:6px;
-    padding:10px;
-    font-size:13px;
-    font-weight:700;
-    cursor:pointer;
-  }
-  button.primary:hover{background:var(--green);}
-  button.danger{
-    background:var(--white);
-    color:#b3473a;
-    border:1px solid #b3473a;
-    border-radius:6px;
-    padding:10px 14px;
-    font-size:13px;
-    font-weight:700;
-    cursor:pointer;
-  }
-  button.danger:hover{background:#fbeceb;}
-  .empty-note{
-    padding:16px;
-    font-size:13px;
-    color:#8a8275;
-    line-height:1.6;
-  }
-  .list-item{
-    padding:10px 16px;
-    border-bottom:1px solid var(--line);
-    cursor:pointer;
-    font-size:13px;
-    display:flex;
-    align-items:center;
-    gap:8px;
-  }
-  .list-item:hover{background:var(--paper);}
-  .dot{
-    width:10px; height:10px; border-radius:50%;
-    flex-shrink:0;
-  }
-  .dot.done{background:var(--green);}
-  .dot.todo{background:var(--amber);}
-  .list-item .meta{flex:1; min-width:0;}
-  .list-item .meta .num{font-weight:700;}
-  .list-item .meta .name{color:#8a8275; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-  .search-box{
-    padding:12px 16px;
-    border-bottom:1px solid var(--line);
-  }
-  .leaflet-marker-icon.done-pin{filter: hue-rotate(0deg);}
-  @media (max-width: 720px){
-    .main{flex-direction:column;}
-    .panel{width:100%; max-height:45%; border-left:none; border-top:1px solid var(--line);}
-  }
+:root{
+  --bps-orange:#E8520A;
+  --bps-orange-deep:#C43F00;
+  --bps-orange-light:#FF7A3D;
+  --bps-blue:#003B7A;
+  --bps-blue-mid:#1A5AA8;
+  --bps-gold:#F5A623;
+  --ink:#1a1a2e;
+  --paper:#fdf8f4;
+  --line:#e8ddd5;
+  --white:#ffffff;
+  --red:#c0392b;
+  --success:#1a8a4a;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{
+  font-family:'Segoe UI',system-ui,sans-serif;
+  background:var(--paper);color:var(--ink);
+  height:100%;overflow:hidden;
+}
+.app{display:flex;flex-direction:column;height:100vh;}
+
+/* ===== AUTH SCREENS ===== */
+.auth-screen{
+  position:fixed;inset:0;
+  background:linear-gradient(145deg,var(--bps-orange-deep) 0%,var(--bps-orange) 55%,var(--bps-gold) 100%);
+  display:flex;align-items:center;justify-content:center;
+  z-index:9999;padding:16px;
+}
+.auth-card{
+  background:var(--white);border-radius:20px;
+  padding:32px 28px;width:100%;max-width:380px;
+  box-shadow:0 20px 60px rgba(0,0,0,0.3);
+}
+.auth-logo{text-align:center;margin-bottom:24px;}
+.auth-logo .bps-badge{
+  display:inline-flex;align-items:center;gap:10px;
+  background:var(--bps-orange);color:white;
+  border-radius:12px;padding:10px 18px;
+  margin-bottom:12px;
+}
+.auth-logo .bps-badge .badge-icon{
+  font-size:24px;line-height:1;
+}
+.auth-logo .bps-badge .badge-text{
+  text-align:left;
+}
+.auth-logo .bps-badge .badge-text b{
+  display:block;font-size:15px;font-weight:800;letter-spacing:0.3px;
+}
+.auth-logo .bps-badge .badge-text span{
+  font-size:10px;opacity:0.85;text-transform:uppercase;letter-spacing:0.8px;
+}
+.auth-logo h2{font-size:18px;font-weight:700;color:var(--bps-orange-deep);margin-bottom:3px;}
+.auth-logo p{font-size:12px;color:#8a7a70;}
+
+.auth-tabs{
+  display:flex;border:1.5px solid var(--line);
+  border-radius:10px;overflow:hidden;margin-bottom:20px;
+}
+.auth-tab{
+  flex:1;padding:9px;font-size:13px;font-weight:700;
+  border:none;background:var(--white);color:#8a7a70;
+  cursor:pointer;transition:all .15s;
+}
+.auth-tab.active{background:var(--bps-orange);color:white;}
+
+.auth-field{margin-bottom:14px;}
+.auth-field label{
+  display:block;font-size:12px;font-weight:700;
+  color:#5a4a40;margin-bottom:5px;
+}
+.auth-field .field-wrap{position:relative;}
+.auth-field input{
+  width:100%;border:1.5px solid var(--line);
+  border-radius:9px;padding:11px 12px;
+  font-size:14px;font-family:inherit;
+  background:var(--paper);color:var(--ink);
+  outline:none;transition:border-color .15s;
+}
+.auth-field input:focus{border-color:var(--bps-orange);}
+.pw-eye{
+  position:absolute;right:10px;top:50%;
+  transform:translateY(-50%);
+  background:none;border:none;cursor:pointer;
+  font-size:16px;padding:2px 4px;color:#8a7a70;
+}
+.auth-btn{
+  width:100%;padding:13px;
+  background:var(--bps-orange);color:white;
+  border:none;border-radius:9px;font-size:14px;
+  font-weight:700;cursor:pointer;margin-top:4px;
+  transition:background .15s;letter-spacing:0.2px;
+}
+.auth-btn:hover{background:var(--bps-orange-deep);}
+.auth-btn:disabled{background:#ccc;cursor:not-allowed;}
+.auth-link{
+  background:none;border:none;color:var(--bps-orange);
+  font-size:12px;font-weight:700;cursor:pointer;
+  text-decoration:underline;padding:0;
+}
+.auth-msg{
+  font-size:12px;text-align:center;
+  margin-top:10px;min-height:18px;padding:0 4px;
+  line-height:1.5;
+}
+.auth-msg.err{color:var(--red);}
+.auth-msg.ok{color:var(--success);}
+.auth-footer{text-align:center;margin-top:14px;font-size:12px;color:#8a7a70;}
+
+/* Lupa sandi panel */
+.forgot-panel{display:none;}
+.forgot-panel.show{display:block;}
+.forgot-back{
+  background:none;border:none;color:var(--bps-orange);
+  font-size:12px;font-weight:700;cursor:pointer;
+  display:flex;align-items:center;gap:4px;margin-bottom:16px;
+  padding:0;
+}
+
+/* ===== HEADER ===== */
+header{
+  background:var(--bps-orange-deep);color:var(--white);
+  padding:11px 14px;
+  display:flex;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;gap:8px;
+  box-shadow:0 2px 8px rgba(0,0,0,0.2);
+  z-index:1000;
+}
+.header-left{display:flex;align-items:center;gap:10px;}
+.header-logo{
+  background:var(--white);border-radius:8px;
+  padding:4px 8px;display:flex;align-items:center;gap:5px;
+}
+.header-logo span{font-size:16px;}
+.header-logo b{color:var(--bps-orange-deep);font-size:12px;font-weight:800;}
+.header-info{}
+.header-info h1{font-size:15px;font-weight:700;}
+.header-info h1 small{
+  display:block;font-size:10px;font-weight:400;
+  opacity:0.75;text-transform:uppercase;letter-spacing:0.5px;
+}
+.petugas-badge{
+  background:rgba(255,255,255,0.15);
+  border-radius:6px;padding:3px 8px;
+  font-size:11px;margin-top:2px;display:inline-block;
+}
+.stats{display:flex;gap:8px;font-size:12px;align-items:center;flex-wrap:wrap;}
+.stat{
+  background:rgba(255,255,255,0.12);
+  border-radius:8px;padding:5px 10px;
+  text-align:center;min-width:48px;
+}
+.stat b{display:block;font-size:15px;}
+.logout-btn{
+  background:rgba(255,255,255,0.15);
+  border:1px solid rgba(255,255,255,0.3);
+  color:white;border-radius:7px;
+  padding:5px 10px;font-size:11px;
+  font-weight:700;cursor:pointer;
+}
+.logout-btn:hover{background:rgba(255,255,255,0.25);}
+
+/* ===== MAP ===== */
+.main{flex:1;display:flex;min-height:0;position:relative;}
+#map{flex:1;height:100%;}
+.hint{
+  position:absolute;bottom:14px;left:50%;
+  transform:translateX(-50%);
+  background:var(--white);border:1px solid var(--line);
+  border-radius:999px;padding:7px 16px;
+  font-size:12px;box-shadow:0 2px 8px rgba(0,0,0,0.12);
+  z-index:500;color:var(--bps-orange-deep);
+  font-weight:600;white-space:nowrap;
+}
+.layer-toggle{
+  position:absolute;top:14px;right:14px;z-index:500;
+  background:var(--white);border:1px solid var(--line);
+  border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.12);
+  overflow:hidden;display:flex;
+}
+.layer-toggle button{
+  border:none;background:var(--white);padding:8px 13px;
+  font-size:12px;font-weight:700;cursor:pointer;color:var(--bps-orange-deep);
+}
+.layer-toggle button.active{background:var(--bps-orange-deep);color:white;}
+.gps-toggle{
+  position:absolute;top:14px;left:14px;z-index:500;
+  background:var(--white);border:1px solid var(--line);
+  border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.12);
+  padding:8px 13px;font-size:12px;font-weight:700;
+  cursor:pointer;color:var(--bps-orange-deep);
+  display:flex;align-items:center;gap:5px;
+}
+.gps-toggle.active{background:var(--bps-orange);color:white;border-color:var(--bps-orange);}
+.boundary-toggle{
+  position:absolute;top:55px;left:14px;z-index:500;
+  background:var(--white);border:1px solid var(--line);
+  border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.12);
+  padding:8px 13px;font-size:12px;font-weight:700;
+  cursor:pointer;color:var(--bps-orange-deep);
+  display:flex;align-items:center;gap:5px;
+}
+.boundary-toggle.editing{background:var(--bps-gold);color:white;border-color:var(--bps-gold);}
+
+/* ===== PANEL ===== */
+.panel{
+  width:320px;background:var(--white);
+  border-left:1px solid var(--line);
+  overflow-y:auto;flex-shrink:0;
+  display:flex;flex-direction:column;
+}
+.panel-section{padding:14px;border-bottom:1px solid var(--line);}
+.panel-section h2{
+  font-size:11px;text-transform:uppercase;
+  letter-spacing:0.9px;color:var(--bps-orange-deep);
+  margin-bottom:8px;font-weight:800;
+}
+label{
+  display:block;font-size:12px;font-weight:600;
+  color:#5a4a40;margin-bottom:4px;margin-top:10px;
+}
+input,textarea,select{
+  width:100%;border:1px solid var(--line);
+  border-radius:6px;padding:8px 10px;
+  font-size:13px;font-family:inherit;
+  background:var(--paper);color:var(--ink);
+}
+textarea{resize:vertical;min-height:50px;}
+.status-row{display:flex;gap:8px;margin-top:6px;}
+.status-btn{
+  flex:1;padding:8px;border-radius:6px;
+  border:2px solid var(--line);background:var(--white);
+  font-size:12px;font-weight:700;cursor:pointer;
+  text-align:center;transition:all .15s;
+  -webkit-tap-highlight-color:transparent;
+}
+.status-btn.done.active{border-color:var(--success);background:var(--success);color:white;}
+.status-btn.todo.active{border-color:var(--bps-orange);background:var(--bps-orange);color:white;}
+.actions{display:flex;gap:8px;margin-top:14px;}
+button.primary{
+  flex:1;background:var(--bps-orange-deep);color:white;
+  border:none;border-radius:6px;padding:11px;
+  font-size:13px;font-weight:700;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+button.primary:active{background:var(--bps-orange);}
+button.danger{
+  background:var(--white);color:var(--red);
+  border:1.5px solid var(--red);border-radius:6px;
+  padding:11px 14px;font-size:13px;font-weight:700;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;
+}
+button.danger:active{background:#fdf0ee;}
+.empty-note{
+  padding:14px;font-size:13px;
+  color:#8a7a70;line-height:1.6;
+}
+.boundary-item{
+  display:flex;align-items:center;gap:5px;
+  padding:7px 10px;border-bottom:1px solid var(--line);
+  font-size:12px;
+}
+.boundary-item input.bname{
+  flex:1;border:none;background:transparent;
+  font-size:12px;font-weight:700;color:var(--ink);
+  padding:3px 2px;min-width:0;
+}
+.boundary-item input.bname:focus{background:var(--paper);border-radius:4px;}
+.bicon{width:11px;height:11px;border-radius:3px;flex-shrink:0;}
+.bbtn{
+  border:1px solid var(--line);background:var(--white);
+  border-radius:6px;padding:4px 7px;font-size:12px;
+  cursor:pointer;flex-shrink:0;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation;
+}
+.bbtn:active{background:var(--paper);}
+.bbtn.locked{background:#fdf0ee;border-color:var(--red);}
+.bbtn.editing-active{background:var(--bps-gold);color:white;border-color:var(--bps-gold);}
+.search-box{padding:10px 14px;border-bottom:1px solid var(--line);}
+.list-item{
+  padding:10px 14px;border-bottom:1px solid var(--line);
+  cursor:pointer;font-size:13px;
+  display:flex;align-items:center;gap:8px;
+  -webkit-tap-highlight-color:transparent;
+}
+.list-item:active{background:var(--paper);}
+.dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.dot.done{background:var(--success);}
+.dot.todo{background:var(--bps-orange);}
+.list-item .meta{flex:1;min-width:0;}
+.list-item .meta .num{font-weight:700;}
+.list-item .meta .name{color:#8a7a70;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+/* ===== CONFIRM / PROMPT MODAL ===== */
+.confirm-overlay,.prompt-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,0.5);
+  display:flex;align-items:center;justify-content:center;
+  z-index:9000;padding:16px;
+}
+.confirm-box,.prompt-box{
+  background:var(--white);border-radius:16px;
+  padding:24px 20px;max-width:320px;width:100%;
+  box-shadow:0 8px 32px rgba(0,0,0,0.3);
+}
+.confirm-box .confirm-title,.prompt-box .prompt-title{
+  font-size:15px;font-weight:700;color:var(--ink);margin-bottom:8px;
+}
+.confirm-box p{font-size:13px;color:#5a4a40;line-height:1.55;margin-bottom:18px;}
+.confirm-actions,.prompt-actions{display:flex;gap:10px;}
+.confirm-actions button,.prompt-actions button{
+  flex:1;border-radius:8px;padding:11px;
+  font-size:13px;font-weight:700;border:none;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation;
+}
+.confirm-actions .yes{background:var(--bps-orange-deep);color:white;}
+.confirm-actions .yes.danger-yes{background:var(--red);}
+.confirm-actions .no,.prompt-actions .cancel{
+  background:var(--paper);color:var(--ink);border:1.5px solid var(--line);
+}
+.prompt-box label{font-size:13px;font-weight:700;color:var(--ink);display:block;margin-bottom:8px;}
+.prompt-box input{margin-bottom:16px;font-size:14px;}
+.prompt-actions .ok{background:var(--bps-orange-deep);color:white;}
+
+/* GPS dot */
+.gps-dot{
+  width:14px;height:14px;border-radius:50%;
+  background:#2b8aef;border:3px solid white;
+  box-shadow:0 0 0 4px rgba(43,138,239,0.3),0 1px 4px rgba(0,0,0,0.3);
+}
+.gps-pulse{
+  width:14px;height:14px;border-radius:50%;
+  background:rgba(43,138,239,0.35);
+  animation:pulse 1.6s infinite;
+}
+@keyframes pulse{
+  0%{transform:scale(1);opacity:0.7;}
+  70%{transform:scale(3.2);opacity:0;}
+  100%{transform:scale(3.2);opacity:0;}
+}
+
+/* Loading spinner */
+.spinner{
+  display:inline-block;width:16px;height:16px;
+  border:2px solid rgba(255,255,255,0.4);
+  border-top-color:white;border-radius:50%;
+  animation:spin .6s linear infinite;vertical-align:middle;margin-right:6px;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+@media(max-width:720px){
+  .main{flex-direction:column;}
+  .panel{width:100%;max-height:46%;border-left:none;border-top:1px solid var(--line);}
+}
+/* Global loading overlay */
+.loading-overlay{
+  position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,0.35);z-index:10000;backdrop-filter:blur(2px);
+}
+.loading-box{background:var(--white);padding:18px 20px;border-radius:12px;display:flex;align-items:center;gap:12px;box-shadow:0 10px 30px rgba(0,0,0,0.3);}
+.loading-box .spinner{width:20px;height:20px;border-width:3px;border-top-color:var(--bps-orange-deep);} 
 </style>
 </head>
 <body>
-<div class="app">
+
+<!-- ===== AUTH SCREEN ===== -->
+<div id="authScreen" class="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="bps-badge">
+        <div class="badge-icon">📊</div>
+        <div class="badge-text">
+          <b>BPS</b>
+          <span>Badan Pusat Statistik</span>
+        </div>
+      </div>
+      <h2>Peta Sensus SLS</h2>
+      <p>Sistem Penanda Rumah per Satuan Lingkungan Setempat</p>
+    </div>
+
+    <!-- TAB: Login / Daftar -->
+    <div class="auth-tabs" id="authTabs">
+      <button class="auth-tab active" onclick="switchTab('login')">Masuk</button>
+      <button class="auth-tab" onclick="switchTab('register')">Daftar Baru</button>
+    </div>
+
+    <!-- FORM LOGIN -->
+    <div id="loginForm">
+      <div class="auth-field">
+        <label>Email</label>
+        <input id="loginEmail" type="email" placeholder="email@bps.go.id" autocomplete="email">
+      </div>
+      <div class="auth-field">
+        <label>Password</label>
+        <div class="field-wrap">
+          <input id="loginPassword" type="password" placeholder="Masukkan password" autocomplete="current-password">
+          <button class="pw-eye" onclick="togglePw('loginPassword',this)" tabindex="-1">👁️</button>
+        </div>
+      </div>
+      <div style="text-align:right;margin-bottom:8px;">
+        <button class="auth-link" onclick="showForgot()">Lupa sandi?</button>
+      </div>
+      <button class="auth-btn" id="btnLogin" onclick="doLogin()">Masuk</button>
+      
+      <div class="auth-msg err" id="loginMsg"></div>
+    </div>
+
+    <!-- FORM DAFTAR -->
+    <div id="registerForm" style="display:none;">
+      <div class="auth-field">
+        <label>Nama Lengkap</label>
+        <input id="regName" type="text" placeholder="Nama petugas sensus" autocomplete="name">
+      </div>
+      <div class="auth-field">
+        <label>Kode Petugas</label>
+        <input id="regCode" type="text" placeholder="contoh: P001" style="text-transform:uppercase">
+      </div>
+      <div class="auth-field">
+        <label>Email</label>
+        <input id="regEmail" type="email" placeholder="email@bps.go.id" autocomplete="email">
+      </div>
+      <div class="auth-field">
+        <label>Password</label>
+        <div class="field-wrap">
+          <input id="regPassword" type="password" placeholder="Minimal 6 karakter" autocomplete="new-password">
+          <button class="pw-eye" onclick="togglePw('regPassword',this)" tabindex="-1">👁️</button>
+        </div>
+      </div>
+      <div class="auth-field">
+        <label>Konfirmasi Password</label>
+        <div class="field-wrap">
+          <input id="regPassword2" type="password" placeholder="Ulangi password" autocomplete="new-password">
+          <button class="pw-eye" onclick="togglePw('regPassword2',this)" tabindex="-1">👁️</button>
+        </div>
+      </div>
+      <button class="auth-btn" id="btnRegister" onclick="doRegister()">Daftar Sekarang</button>
+      <div class="auth-msg" id="registerMsg"></div>
+    </div>
+
+    <!-- FORM LUPA SANDI -->
+    <div id="forgotForm" style="display:none;">
+      <button class="forgot-back" onclick="hideForgot()">← Kembali ke Login</button>
+      <div class="auth-logo" style="margin-bottom:16px;">
+        <h2>Lupa Sandi?</h2>
+        <p>Masukkan email Anda, kami akan kirimkan link reset password.</p>
+      </div>
+      <div class="auth-field">
+        <label>Email</label>
+        <input id="forgotEmail" type="email" placeholder="email@bps.go.id">
+      </div>
+      <button class="auth-btn" id="btnForgot" onclick="doForgot()">Kirim Link Reset</button>
+      <div class="auth-msg" id="forgotMsg"></div>
+    </div>
+
+    <div class="auth-footer" id="authFooter">
+      &copy; 2025 Badan Pusat Statistik &bull; Peta Sensus SLS
+    </div>
+  </div>
+</div>
+
+<!-- ===== MAIN APP ===== -->
+<div class="app" id="mainApp" style="display:none;">
   <header>
-    <h1>Peta Sensus<span>Penanda rumah per SLS</span></h1>
+    <div class="header-left">
+      <div class="header-logo">
+        <span>📊</span>
+        <b>BPS</b>
+      </div>
+      <div class="header-info">
+        <h1>Peta Sensus SLS<small>Penanda Rumah per SLS</small></h1>
+        <span class="petugas-badge" id="petugasBadge"></span>
+      </div>
+    </div>
     <div class="stats">
       <div class="stat"><b id="statTotal">0</b>Total</div>
-      <div class="stat" style="background:rgba(76,175,80,0.25)"><b id="statDone">0</b>Sudah</div>
-      <div class="stat" style="background:rgba(255,193,7,0.25)"><b id="statTodo">0</b>Belum</div>
+      <div class="stat" style="background:rgba(26,138,74,0.25)"><b id="statDone">0</b>Sudah</div>
+      <div class="stat" style="background:rgba(232,82,10,0.25)"><b id="statTodo">0</b>Belum</div>
+      <button class="logout-btn" onclick="doLogout()">Keluar</button>
     </div>
   </header>
   <div class="main">
@@ -402,45 +500,361 @@
       <span id="gpsIcon">📍</span><span id="gpsLabel">Lacak GPS</span>
     </div>
     <div class="boundary-toggle" id="boundaryToggle" onclick="startNewBoundary()">
-      <span id="boundaryIcon">➕</span><span id="boundaryLabel">Tambah Batas SLS</span>
+      <span>➕</span><span id="boundaryLabel">Tambah Batas SLS</span>
     </div>
-    <div class="hint">📍 Klik di peta untuk menambah rumah baru</div>
+    <div class="hint">📍 Klik peta untuk menambah rumah baru</div>
     <div class="panel">
       <div class="search-box">
-        <input id="searchBox" placeholder="Cari nama KK / no. rumah...">
+        <input id="searchBox" placeholder="🔍 Cari nama KK / no. rumah...">
       </div>
       <div id="boundarySection"></div>
       <div id="formSection"></div>
-      <div id="listSection" style="flex:1; overflow-y:auto;"></div>
+      <div id="listSection" style="flex:1;overflow-y:auto;"></div>
     </div>
   </div>
 </div>
 
+<!-- Global loading overlay -->
+<div id="globalLoading" class="loading-overlay" style="display:none;" aria-hidden="true">
+  <div class="loading-box">
+    <span class="spinner"></span>
+    <div id="globalLoadingMsg">Memproses...</div>
+  </div>
+</div>
+
 <script>
-let map = L.map('map', {maxZoom: 21}).setView([-6.2088, 106.8456], 15); // default Jakarta
+// ===== GLOBAL VARS =====
+let sb = null;
+let currentUser = null;
+let currentPetugas = null;
+let map, streetLayer, satLayer, currentLayer;
+let houses = [], selectedId = null;
+let gpsActive = false, gpsWatchId = null, gpsMarker = null, gpsAccCircle = null;
+let boundaryLayerGroup, boundaries = [], editingBoundary = false, editingBoundaryItem = null, drawControl = null, maskLayer = null;
 
-const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom: 19,
-  attribution: '&copy; OpenStreetMap contributors'
-});
-
-const satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-  maxZoom: 21,
-  maxNativeZoom: 19,
-  attribution: 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics'
-});
-
-streetLayer.addTo(map);
-let currentLayer = 'street';
-
-function setLayer(type){
-  if(type === currentLayer) return;
-  if(currentLayer === 'street'){
-    map.removeLayer(streetLayer);
-  } else {
-    map.removeLayer(satLayer);
+// ===== SUPABASE INIT =====
+(function() {
+  const SUPABASE_URL = 'https://ojybnopbaipceyttetyx.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qeWJub3BiYWlwY2V5dHRldHl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzMzkwMzEsImV4cCI6MjA5NjkxNTAzMX0.n00jlGfOGHWPfy-V2ohI7SGdgUXbm73nYIxGN54EzWQ';
+  if (typeof supabase === 'undefined') {
+    console.warn('Supabase library not loaded');
+    return;
   }
-  if(type === 'street'){
+  try {
+    sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  } catch(e) {
+    console.error('Supabase error:', e);
+  }
+})();
+
+// ===== AUTH UI =====
+
+// ===== AUTH UI =====
+function switchTab(tab){
+  document.getElementById('loginForm').style.display    = tab==='login'    ? '' : 'none';
+  document.getElementById('registerForm').style.display = tab==='register' ? '' : 'none';
+  document.getElementById('forgotForm').style.display   = 'none';
+  document.getElementById('authTabs').style.display     = '';
+  document.getElementById('authFooter').style.display   = '';
+  document.querySelectorAll('.auth-tab').forEach((b,i)=>{
+    b.classList.toggle('active', (tab==='login'&&i===0)||(tab==='register'&&i===1));
+  });
+}
+function showForgot(){
+  document.getElementById('loginForm').style.display  = 'none';
+  document.getElementById('authTabs').style.display   = 'none';
+  document.getElementById('forgotForm').style.display = '';
+  document.getElementById('authFooter').style.display = 'none';
+}
+function hideForgot(){
+  document.getElementById('forgotForm').style.display = 'none';
+  document.getElementById('authTabs').style.display   = '';
+  document.getElementById('loginForm').style.display  = '';
+  document.getElementById('authFooter').style.display = '';
+}
+function togglePw(id,btn){
+  const inp = document.getElementById(id);
+  const show = inp.type==='password';
+  inp.type = show ? 'text' : 'password';
+  btn.textContent = show ? '🙈' : '👁️';
+}
+function setBtnLoading(id, loading, label=''){
+  const btn = document.getElementById(id);
+  if(!btn) return;
+  if(loading){
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner"></span>${label||'Memproses...'}`;
+  } else {
+    btn.disabled = false;
+    btn.textContent = label;
+  }
+}
+function setMsg(id, msg, isErr=true){
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.textContent = msg;
+  el.className = 'auth-msg ' + (isErr ? 'err' : 'ok');
+}
+
+// ===== REGISTER =====
+async function doRegister(){
+  if(!sb){ setMsg('registerMsg','❌ Koneksi Supabase gagal. Coba refresh halaman.'); return; }
+  const name  = document.getElementById('regName').value.trim();
+  const code  = document.getElementById('regCode').value.trim().toUpperCase();
+  const email = document.getElementById('regEmail').value.trim();
+  const pw    = document.getElementById('regPassword').value;
+  const pw2   = document.getElementById('regPassword2').value;
+  setMsg('registerMsg','');
+  if(!name){ setMsg('registerMsg','Nama wajib diisi.'); return; }
+  if(!code){ setMsg('registerMsg','Kode petugas wajib diisi.'); return; }
+  if(!email){ setMsg('registerMsg','Email wajib diisi.'); return; }
+  if(pw.length < 6){ setMsg('registerMsg','Password minimal 6 karakter.'); return; }
+  if(pw !== pw2){ setMsg('registerMsg','Konfirmasi password tidak cocok.'); return; }
+
+  setBtnLoading('btnRegister', true, 'Mendaftar...');
+  let data, error;
+  try{
+    ({ data, error } = await sb.auth.signUp({
+      email, password: pw,
+      options: { data: { full_name: name, petugas_code: code } }
+    }));
+  }catch(e){ error = e; }
+  setBtnLoading('btnRegister', false, 'Daftar Sekarang');
+
+  if(error){
+    setMsg('registerMsg', 'Gagal mendaftar: ' + (error.message||String(error)));
+    return;
+  }
+  // Supabase kirim email konfirmasi otomatis
+  setMsg('registerMsg',
+    '✅ Pendaftaran berhasil! Cek email ' + email + ' untuk konfirmasi akun, lalu login.',
+    false
+  );
+  // Simpan metadata ke tabel petugas
+  if(data.user){
+    await sb.from('petugas').upsert({
+      id: data.user.id, email, full_name: name, petugas_code: code
+    });
+  }
+}
+
+// ===== LOGIN =====
+async function doLogin(){
+  if(!sb){ setMsg('loginMsg','❌ Koneksi Supabase gagal. Coba refresh halaman.'); return; }
+  const email = document.getElementById('loginEmail').value.trim();
+  const pw    = document.getElementById('loginPassword').value;
+  setMsg('loginMsg','');
+  if(!email){ setMsg('loginMsg','Email wajib diisi.'); return; }
+  if(!pw){ setMsg('loginMsg','Password wajib diisi.'); return; }
+
+  setBtnLoading('btnLogin', true, 'Masuk...');
+  showLoading('Masuk...');
+  let data, error;
+  try{ ({ data, error } = await sb.auth.signInWithPassword({ email, password: pw })); }
+  catch(e){ error = e; }
+  setBtnLoading('btnLogin', false, 'Masuk');
+  hideLoading();
+
+  if(error){
+    const em = (error.message||String(error)).toLowerCase();
+    let msg;
+    if(em.includes('invalid login credentials') || em.includes('invalid')){
+      msg = '❌ Email atau password salah, atau akun belum terdaftar. Periksa kembali atau klik "Daftar" jika belum punya akun.';
+    } else if(em.includes('confirm')){
+      msg = '⚠️ Akun belum dikonfirmasi. Cek email Anda untuk link konfirmasi.';
+    } else if(em.includes('user not found') || em.includes('not found')){
+      msg = '❌ Akun belum terdaftar. Silakan klik "Daftar" untuk membuat akun baru.';
+    } else {
+      msg = '❌ ' + (error.message||String(error));
+    }
+    setMsg('loginMsg', msg);
+    return;
+  }
+  handleSession(data.session);
+}
+
+// ===== LUPA SANDI =====
+async function doForgot(){
+  if(!sb){ setMsg('forgotMsg','❌ Koneksi Supabase gagal. Coba refresh halaman.'); return; }
+  const email = document.getElementById('forgotEmail').value.trim();
+  setMsg('forgotMsg','');
+  if(!email){ setMsg('forgotMsg','Email wajib diisi.'); return; }
+
+  setBtnLoading('btnForgot', true, 'Mengirim...');
+  let result, error;
+  try{ ({ error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: window.location.href })); }
+  catch(e){ error = e; }
+  setBtnLoading('btnForgot', false, 'Kirim Link Reset');
+
+  if(error){
+    setMsg('forgotMsg', 'Gagal: ' + (error.message||String(error)));
+    return;
+  }
+  setMsg('forgotMsg',
+    '✅ Link reset password telah dikirim ke ' + email + '. Cek inbox / spam Anda.',
+    false
+  );
+}
+
+// ===== SESSION =====
+let appInitialized = false;
+async function handleSession(session){
+  if(!session || !sb){ return; }
+  if(appInitialized){ currentUser = session.user; return; }
+  appInitialized = true;
+  currentUser = session.user;
+  // Ambil metadata petugas
+  const meta = currentUser.user_metadata || {};
+  let row = null;
+  try{
+    const { data } = await sb.from('petugas').select('*').eq('id', currentUser.id).single();
+    row = data;
+  }catch(e){ console.warn('Gagal ambil data petugas:', e); }
+  
+  currentPetugas = {
+    name: row?.full_name || meta.full_name || currentUser.email,
+    code: row?.petugas_code || meta.petugas_code || 'P???',
+    email: currentUser.email
+  };
+  const authScreen = document.getElementById('authScreen');
+  const mainApp = document.getElementById('mainApp');
+  const petugasBadge = document.getElementById('petugasBadge');
+  if(authScreen) authScreen.style.display = 'none';
+  if(mainApp) mainApp.style.display = 'flex';
+  if(petugasBadge) petugasBadge.textContent = '👤 ' + currentPetugas.name + ' (' + currentPetugas.code + ')';
+  initApp();
+}
+
+async function doLogout(){
+  if(!sb){ location.reload(); return; }
+  showConfirm('Keluar dari sesi ini?', 'Anda perlu login ulang untuk melanjutkan.', false, async () => {
+    try{ await sb.auth.signOut(); }catch(e){ console.warn('Logout error:', e); }
+    location.reload();
+  });
+}
+
+// Cek session saat halaman dibuka
+(async()=>{
+  if(!sb){ console.warn('⚠️ Supabase tidak tersedia. Mode offline diaktifkan.'); return; }
+  
+  try{
+    const hasAuthFragment = window.location.hash && (
+      window.location.hash.includes('access_token') ||
+      window.location.hash.includes('refresh_token') ||
+      window.location.hash.includes('type=signup') ||
+      window.location.hash.includes('type=recovery')
+    );
+    if(hasAuthFragment){
+      showLoading('Memproses login...');
+      let data, error;
+      try{
+        ({ data, error } = await sb.auth.getSession());
+      }catch(e){ error = e; }
+      hideLoading();
+      if(error){
+        console.warn('Supabase getSession error:', error.message || error);
+        setMsg('loginMsg','Gagal memproses token: '+(error.message||error));
+      }
+      if(data?.session){
+        handleSession(data.session);
+      }
+      try{ history.replaceState(null, '', window.location.pathname + window.location.search); }catch(e){}
+      return;
+    }
+  }catch(e){ console.warn('Error parsing supabase redirect:', e); hideLoading(); }
+
+  try{
+    const { data } = await sb.auth.getSession();
+    if(data?.session) handleSession(data.session);
+  }catch(e){ console.warn('Gagal ambil session:', e); }
+})();
+
+// Loading helper functions
+function showLoading(msg){
+  try{document.getElementById('globalLoading').style.display='flex';document.getElementById('globalLoading').setAttribute('aria-hidden','false');}catch(e){}
+  try{if(msg)document.getElementById('globalLoadingMsg').textContent=msg;}catch(e){}
+}
+function hideLoading(){
+  try{document.getElementById('globalLoading').style.display='none';document.getElementById('globalLoading').setAttribute('aria-hidden','true');}catch(e){}
+}
+
+// Listener perubahan session (termasuk setelah reset password)
+if(sb && sb.auth){
+  sb.auth.onAuthStateChange((event, session) => {
+    if(event === 'SIGNED_IN' && session && !currentUser){
+      handleSession(session);
+    }
+  });
+}
+
+// Enter key - safe add listeners
+const pwdLoginField = document.getElementById('loginPassword');
+if(pwdLoginField) pwdLoginField.addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+
+const pwdReg2Field = document.getElementById('regPassword2');
+if(pwdReg2Field) pwdReg2Field.addEventListener('keydown', e => { if(e.key==='Enter') doRegister(); });
+
+// ===== INISIALISASI APP =====
+const lockedStyle = {color:'#c0392b',weight:3,dashArray:'8,6',fillOpacity:0,interactive:false};
+const editStyle   = {color:'#E8520A',weight:3,dashArray:'4,4',fillOpacity:0,interactive:true};
+const WORLD_RING  = [[-89,-179],[-89,179],[89,179],[89,-179]];
+
+function initApp(){
+  try {
+    if(typeof L === 'undefined'){
+      console.error('❌ Leaflet library tidak terload!');
+      alert('Error: Peta library tidak tersedia. Coba refresh halaman.');
+      return;
+    }
+    const mapElement = document.getElementById('map');
+    if(!mapElement){
+      console.error('❌ Element #map tidak ditemukan!');
+      return;
+    }
+    if(map){ return; }
+    if(mapElement._leaflet_id){ return; }
+    map = L.map('map',{maxZoom:21}).setView([-6.2088,106.8456],15);
+    streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'});
+    satLayer    = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:21,maxNativeZoom:19,attribution:'Tiles &copy; Esri'});
+    streetLayer.addTo(map);
+    currentLayer = 'street';
+    boundaryLayerGroup = L.featureGroup().addTo(map);
+    map.locate({setView:true,maxZoom:18});
+
+    map.on('click', function(e){
+      if(editingBoundary || !sb) return;
+      showConfirm('Tambah Rumah Baru','Tambahkan penanda rumah baru di lokasi ini?',false, async()=>{
+        if(!sb){ alert('Koneksi database gagal.'); return; }
+        const { data, error } = await sb.from('houses').insert({
+          lat:e.latlng.lat, lng:e.latlng.lng,
+          no:'', kk:'', jumlah:'', catatan:'', status:'todo',
+          petugas_code: currentPetugas.code,
+          petugas_name: currentPetugas.name,
+          user_id: currentUser.id
+        }).select().single();
+        if(error){ alert('Gagal menyimpan: '+error.message); return; }
+        const house = addHouseToMap(data);
+        selectHouse(house.id);
+        renderList(); updateStats();
+      });
+    });
+
+    renderForm(); renderList(); updateStats();
+    loadHouses(); loadBoundary();
+    
+    const searchBox = document.getElementById('searchBox');
+    if(searchBox) searchBox.addEventListener('input', e => renderList(e.target.value));
+  } catch(err) {
+    console.error('❌ Error initializing app:', err);
+    alert('Error: Gagal menginisialisasi aplikasi. Detail: ' + err.message);
+  }
+}
+
+// ===== LAYER =====
+function setLayer(type){
+  if(type===currentLayer) return;
+  map.removeLayer(currentLayer==='street'?streetLayer:satLayer);
+  if(type==='street'){
     streetLayer.addTo(map);
     document.getElementById('btnStreet').classList.add('active');
     document.getElementById('btnSat').classList.remove('active');
@@ -452,321 +866,89 @@ function setLayer(type){
   currentLayer = type;
 }
 
-// try to locate user
-map.locate({setView:true, maxZoom:18});
-
-// --- GPS Live Tracking ---
-let gpsActive = false;
-let gpsWatchId = null;
-let gpsMarker = null;
-let gpsAccCircle = null;
-
+// ===== GPS =====
 function toggleGPS(){
   if(gpsActive){
-    if(gpsWatchId !== null) navigator.geolocation.clearWatch(gpsWatchId);
-    gpsWatchId = null;
-    gpsActive = false;
+    if(gpsWatchId!==null) navigator.geolocation.clearWatch(gpsWatchId);
+    gpsWatchId=null; gpsActive=false;
     document.getElementById('gpsToggle').classList.remove('active');
-    document.getElementById('gpsLabel').textContent = 'Lacak GPS';
-    document.getElementById('gpsIcon').textContent = '📍';
-    if(gpsMarker){ map.removeLayer(gpsMarker); gpsMarker = null; }
-    if(gpsAccCircle){ map.removeLayer(gpsAccCircle); gpsAccCircle = null; }
+    document.getElementById('gpsLabel').textContent='Lacak GPS';
+    document.getElementById('gpsIcon').textContent='📍';
+    if(gpsMarker){map.removeLayer(gpsMarker);gpsMarker=null;}
+    if(gpsAccCircle){map.removeLayer(gpsAccCircle);gpsAccCircle=null;}
     return;
   }
-  if(!navigator.geolocation){
-    alert('Perangkat ini tidak mendukung GPS.');
-    return;
-  }
-  gpsActive = true;
+  if(!navigator.geolocation){alert('Perangkat ini tidak mendukung GPS.');return;}
+  gpsActive=true;
   document.getElementById('gpsToggle').classList.add('active');
-  document.getElementById('gpsLabel').textContent = 'Melacak...';
-  document.getElementById('gpsIcon').textContent = '🛰️';
-
-  gpsWatchId = navigator.geolocation.watchPosition(pos => {
-    const latlng = [pos.coords.latitude, pos.coords.longitude];
-    const acc = pos.coords.accuracy;
-
+  document.getElementById('gpsLabel').textContent='Melacak...';
+  document.getElementById('gpsIcon').textContent='🛰️';
+  gpsWatchId=navigator.geolocation.watchPosition(pos=>{
+    const latlng=[pos.coords.latitude,pos.coords.longitude];
+    const acc=pos.coords.accuracy;
     if(!gpsMarker){
-      const icon = L.divIcon({
-        html: `<div style="position:relative;"><div class="gps-pulse" style="position:absolute;"></div><div class="gps-dot"></div></div>`,
-        className:'', iconSize:[14,14], iconAnchor:[7,7]
+      const icon=L.divIcon({
+        html:`<div style="position:relative;"><div class="gps-pulse" style="position:absolute;"></div><div class="gps-dot"></div></div>`,
+        className:'',iconSize:[14,14],iconAnchor:[7,7]
       });
-      gpsMarker = L.marker(latlng, {icon, zIndexOffset:1000}).addTo(map);
-      gpsAccCircle = L.circle(latlng, {radius:acc, color:'#2b8aef', weight:1, fillOpacity:0.08}).addTo(map);
-      map.setView(latlng, 18);
-      document.getElementById('gpsLabel').textContent = 'Lacak Aktif';
+      gpsMarker=L.marker(latlng,{icon,zIndexOffset:1000}).addTo(map);
+      gpsAccCircle=L.circle(latlng,{radius:acc,color:'#2b8aef',weight:1,fillOpacity:0.08}).addTo(map);
+      map.setView(latlng,18);
+      document.getElementById('gpsLabel').textContent='Lacak Aktif';
     } else {
       gpsMarker.setLatLng(latlng);
-      gpsAccCircle.setLatLng(latlng);
-      gpsAccCircle.setRadius(acc);
+      gpsAccCircle.setLatLng(latlng);gpsAccCircle.setRadius(acc);
     }
-  }, err => {
-    document.getElementById('gpsLabel').textContent = 'Gagal akses GPS';
-    document.getElementById('gpsIcon').textContent = '⚠️';
-  }, {
-    enableHighAccuracy: true,
-    maximumAge: 1000,
-    timeout: 10000
-  });
+  },()=>{
+    document.getElementById('gpsLabel').textContent='Gagal GPS';
+    document.getElementById('gpsIcon').textContent='⚠️';
+  },{enableHighAccuracy:true,maximumAge:1000,timeout:10000});
 }
 
-// --- Supabase setup ---
-const SUPABASE_URL = 'https://ojybnopbaipceyttetyx.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qeWJub3BiYWlwY2V5dHRldHl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzMzkwMzEsImV4cCI6MjA5NjkxNTAzMX0.n00jlGfOGHWPfy-V2ohI7SGdgUXbm73nYIxGN54EzWQ';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-let houses = []; // {id, lat, lng, marker, no, kk, jumlah, catatan, status}
-let selectedId = null;
-
+// ===== HOUSES =====
 function makeIcon(status){
-  const color = status === 'done' ? '#2f6e4f' : '#c98a3c';
-  const html = `<div style="
-    width:26px;height:26px;border-radius:50%;
-    background:${color}; border:3px solid white;
-    box-shadow:0 1px 4px rgba(0,0,0,0.4);
-    display:flex; align-items:center; justify-content:center;
-    color:white; font-size:11px; font-weight:700;">${status==='done'?'✓':'!'}</div>`;
-  return L.divIcon({html, className:'', iconSize:[26,26], iconAnchor:[13,13]});
+  const color=status==='done'?'#1a8a4a':'#E8520A';
+  const html=`<div style="width:26px;height:26px;border-radius:50%;background:${color};border:3px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;color:white;font-size:11px;font-weight:700;">${status==='done'?'✓':'!'}</div>`;
+  return L.divIcon({html,className:'',iconSize:[26,26],iconAnchor:[13,13]});
 }
 
 function addHouseToMap(row){
-  const marker = L.marker([row.lat, row.lng], {icon: makeIcon(row.status), draggable:true}).addTo(map);
-  const house = {
-    id: row.id, lat: row.lat, lng: row.lng, marker,
-    no: row.no || '', kk: row.kk || '', jumlah: row.jumlah || '', catatan: row.catatan || '', status: row.status || 'todo'
-  };
+  const marker=L.marker([row.lat,row.lng],{icon:makeIcon(row.status),draggable:true}).addTo(map);
+  const house={id:row.id,lat:row.lat,lng:row.lng,marker,no:row.no||'',kk:row.kk||'',jumlah:row.jumlah||'',catatan:row.catatan||'',status:row.status||'todo',petugas_code:row.petugas_code||''};
   marker.bindPopup(popupContent(house));
-  marker.on('click', () => selectHouse(house.id));
-  marker.on('dragend', async (ev) => {
-    house.lat = ev.target.getLatLng().lat;
-    house.lng = ev.target.getLatLng().lng;
-    await sb.from('houses').update({lat: house.lat, lng: house.lng}).eq('id', house.id);
+  marker.on('click',()=>selectHouse(house.id));
+  marker.on('dragend',async(ev)=>{
+    house.lat=ev.target.getLatLng().lat;
+    house.lng=ev.target.getLatLng().lng;
+    if(sb) await sb.from('houses').update({lat:house.lat,lng:house.lng}).eq('id',house.id);
   });
   houses.push(house);
   return house;
 }
 
 async function loadHouses(){
-  const { data, error } = await sb.from('houses').select('*');
-  if(error){
-    console.error(error);
-    alert('Gagal memuat data dari server: ' + error.message);
-    return;
-  }
-  data.forEach(addHouseToMap);
-  renderList();
-  updateStats();
+  if(!sb){ console.warn('Supabase tidak tersedia. Data tidak bisa dimuat.'); return; }
+  showLoading('Memuat rumah...');
+  let data, error;
+  try{ ({ data, error } = await sb.from('houses').select('*').eq('user_id', currentUser.id)); }
+  catch(e){ error = e; }
+  hideLoading();
+  if(error){ console.warn('Gagal memuat data:', error); return; }
+  if(data) data.forEach(addHouseToMap);
+  renderList(); updateStats();
 }
 
-// --- Batas Wilayah (multi SLS/Sub-SLS) ---
-const boundaryLayerGroup = L.featureGroup().addTo(map);
-let boundaries = []; // {id, name, geojson, locked, layer}
-let editingBoundary = false; // global flag: sedang menggambar/edit batas (disable tambah rumah)
-let editingBoundaryItem = null; // {id, layer} yang sedang diedit
-let drawControl = null;
-let maskLayer = null;
-
-const lockedStyle = {color:'#b3473a', weight:3, dashArray:'8,6', fillOpacity:0, interactive:false};
-const editStyle = {color:'#c98a3c', weight:3, dashArray:'4,4', fillOpacity:0, interactive:true};
-
-const WORLD_RING = [[-89,-179],[-89,179],[89,179],[89,-179]];
-
-function refreshMask(){
-  if(maskLayer) map.removeLayer(maskLayer);
-  if(boundaries.length === 0) return;
-  const rings = [WORLD_RING, ...boundaries.map(b => JSON.parse(b.geojson))];
-  maskLayer = L.polygon(rings, {
-    color: 'transparent', weight:0,
-    fillColor:'#555', fillOpacity:0.35,
-    interactive:false
-  }).addTo(map);
-  maskLayer.bringToBack();
-  if(streetLayer && map.hasLayer(streetLayer)) {/* keep tiles below mask automatically */}
-}
-
-async function loadBoundary(){
-  const { data, error } = await sb.from('boundaries').select('*').order('id');
-  if(error){
-    console.warn('Tabel boundaries belum ada / error:', error.message);
-    return;
-  }
-  boundaries = data || [];
-  boundaries.forEach(b => {
-    const latlngs = JSON.parse(b.geojson);
-    b.layer = L.polygon(latlngs, b.locked ? lockedStyle : editStyle).addTo(boundaryLayerGroup);
-    b.layer.bindTooltip(b.name || 'SLS', {sticky:true});
-  });
-  refreshMask();
-  renderBoundaryList();
-  if(boundaries.length > 0){
-    const group = L.featureGroup(boundaries.map(b=>b.layer));
-    map.fitBounds(group.getBounds(), {maxZoom: 17});
-  }
-}
-
-function renderBoundaryList(){
-  const section = document.getElementById('boundarySection');
-  if(boundaries.length === 0){
-    section.innerHTML = `<div class="empty-note" style="padding:10px 16px; font-size:12px;">Belum ada batas SLS/Sub-SLS. Klik "Tambah Batas SLS" di peta untuk menggambar.</div>`;
-    return;
-  }
-  section.innerHTML = boundaries.map(b => `
-    <div class="boundary-item">
-      <div class="bicon" style="background:${b.locked ? '#b3473a' : '#c98a3c'}"></div>
-      <input class="bname" value="${escapeHtml(b.name||'')}" placeholder="Nama SLS/Sub-SLS"
-        onchange="renameBoundary(${b.id}, this.value)">
-      <button class="bbtn ${editingBoundaryItem && editingBoundaryItem.id===b.id ? 'editing-active':''}"
-        onclick="toggleEditBoundary(${b.id})">${editingBoundaryItem && editingBoundaryItem.id===b.id ? 'Selesai' : '✏️'}</button>
-      <button class="bbtn ${b.locked?'locked':''}" onclick="toggleLockBoundary(${b.id})">${b.locked ? '🔒' : '🔓'}</button>
-      <button class="bbtn" onclick="deleteBoundary(${b.id})">🗑️</button>
-    </div>
-  `).join('');
-}
-
-async function renameBoundary(id, name){
-  const b = boundaries.find(x=>x.id===id);
-  b.name = name;
-  b.layer.bindTooltip(name || 'SLS', {sticky:true});
-  const { error } = await sb.from('boundaries').update({name}).eq('id', id);
-  if(error) alert('Gagal menyimpan nama: ' + error.message);
-}
-
-function startNewBoundary(){
-  if(editingBoundary){ alert('Selesaikan dulu pengeditan batas yang sedang berjalan.'); return; }
-  editingBoundary = true;
-  document.getElementById('boundaryToggle').classList.add('editing');
-  document.getElementById('boundaryLabel').textContent = 'Klik peta utk gambar...';
-
-  if(!drawControl){
-    drawControl = new L.Control.Draw({
-      position: 'topright',
-      draw: {
-        polygon: { allowIntersection:false, shapeOptions: editStyle },
-        polyline:false, rectangle:false, circle:false, marker:false, circlemarker:false
-      },
-      edit:false
-    });
-  }
-  map.addControl(drawControl);
-
-  function onCreate(e){
-    map.off(L.Draw.Event.CREATED, onCreate);
-    map.removeControl(drawControl);
-    editingBoundary = false;
-    document.getElementById('boundaryToggle').classList.remove('editing');
-    document.getElementById('boundaryLabel').textContent = 'Tambah Batas SLS';
-
-    const layer = e.layer;
-    layer.setStyle(editStyle);
-    boundaryLayerGroup.addLayer(layer);
-    const latlngs = layer.getLatLngs()[0].map(p => [p.lat, p.lng]);
-    saveNewBoundary(latlngs, layer);
-  }
-  map.on(L.Draw.Event.CREATED, onCreate);
-}
-
-async function saveNewBoundary(latlngs, layer){
-  const name = prompt('Nama wilayah ini (contoh: RT 010 RW 003 Dusun 2-01):', 'SLS Baru') || 'SLS Baru';
-  const geojson = JSON.stringify(latlngs);
-  const { data, error } = await sb.from('boundaries').insert({name, geojson, locked:false}).select().single();
-  if(error){
-    alert('Gagal menyimpan batas: ' + error.message);
-    boundaryLayerGroup.removeLayer(layer);
-    return;
-  }
-  data.layer = layer;
-  layer.bindTooltip(data.name, {sticky:true});
-  boundaries.push(data);
-  refreshMask();
-  renderBoundaryList();
-}
-
-function toggleEditBoundary(id){
-  const b = boundaries.find(x=>x.id===id);
-  if(editingBoundaryItem && editingBoundaryItem.id === id){
-    finishEditBoundary();
-    return;
-  }
-  if(editingBoundaryItem){ alert('Selesaikan dulu pengeditan batas lain.'); return; }
-  if(b.locked){ alert('Batas ini terkunci. Buka kunci (🔒) dulu untuk mengedit.'); return; }
-  editingBoundaryItem = b;
-  b.layer.editing.enable();
-  renderBoundaryList();
-}
-
-async function finishEditBoundary(){
-  const b = editingBoundaryItem;
-  b.layer.editing.disable();
-  const latlngs = b.layer.getLatLngs()[0].map(p => [p.lat, p.lng]);
-  const geojson = JSON.stringify(latlngs);
-  const { error } = await sb.from('boundaries').update({geojson}).eq('id', b.id);
-  if(error) alert('Gagal menyimpan perubahan batas: ' + error.message);
-  else b.geojson = geojson;
-  editingBoundaryItem = null;
-  refreshMask();
-  renderBoundaryList();
-}
-
-async function toggleLockBoundary(id){
-  const b = boundaries.find(x=>x.id===id);
-  const newLocked = !b.locked;
-  const { error } = await sb.from('boundaries').update({locked:newLocked}).eq('id', id);
-  if(error){ alert('Gagal mengubah kunci: ' + error.message); return; }
-  b.locked = newLocked;
-  b.layer.setStyle(newLocked ? lockedStyle : editStyle);
-  if(newLocked && editingBoundaryItem && editingBoundaryItem.id===id){
-    b.layer.editing.disable();
-    editingBoundaryItem = null;
-  }
-  renderBoundaryList();
-}
-
-async function deleteBoundary(id){
-  if(!confirm('Hapus batas wilayah ini?')) return;
-  const b = boundaries.find(x=>x.id===id);
-  boundaryLayerGroup.removeLayer(b.layer);
-  boundaries = boundaries.filter(x=>x.id!==id);
-  if(editingBoundaryItem && editingBoundaryItem.id===id) editingBoundaryItem = null;
-  refreshMask();
-  renderBoundaryList();
-  const { error } = await sb.from('boundaries').delete().eq('id', id);
-  if(error) alert('Gagal menghapus di server: ' + error.message);
-}
-
-map.on('click', function(e){
-  if(editingBoundary) return;
-  showConfirm('Tambahkan penanda rumah baru di lokasi ini?', async () => {
-    const { data, error } = await sb.from('houses').insert({
-      lat: e.latlng.lat, lng: e.latlng.lng,
-      no: '', kk: '', jumlah: '', catatan: '', status: 'todo'
-    }).select().single();
-    if(error){
-      alert('Gagal menyimpan ke server: ' + error.message);
-      return;
-    }
-    const house = addHouseToMap(data);
-    selectHouse(house.id);
-    renderList();
-    updateStats();
-  });
-});
-
-function selectHouse(id){
-  selectedId = id;
-  renderForm();
-  renderList();
-}
+function selectHouse(id){ selectedId=id; renderForm(); renderList(); }
 
 function renderForm(){
-  const section = document.getElementById('formSection');
+  const section=document.getElementById('formSection');
   if(!selectedId){
-    section.innerHTML = `<div class="empty-note">Belum ada rumah dipilih. Klik di peta untuk menandai rumah baru, atau pilih dari daftar di bawah.</div>`;
+    section.innerHTML=`<div class="empty-note">Belum ada rumah dipilih.<br>Klik peta untuk menandai rumah baru, atau pilih dari daftar di bawah.</div>`;
     return;
   }
-  const h = houses.find(x => x.id === selectedId);
-  if(!h){ selectedId = null; renderForm(); return; }
-
-  section.innerHTML = `
+  const h=houses.find(x=>x.id===selectedId);
+  if(!h){selectedId=null;renderForm();return;}
+  section.innerHTML=`
     <div class="panel-section">
       <h2>Detail Rumah</h2>
       <label>Status Sensus</label>
@@ -775,147 +957,287 @@ function renderForm(){
         <button class="status-btn todo ${h.status==='todo'?'active':''}" onclick="setStatus(${h.id},'todo')">! Belum</button>
       </div>
       <label>Nomor Urut Bangunan/Rumah</label>
-      <input id="f_no" value="${escapeHtml(h.no)}" placeholder="contoh: 014B-012">
+      <input id="f_no" value="${esc(h.no)}" placeholder="contoh: 014B-012">
       <label>Nama Kepala Keluarga</label>
-      <input id="f_kk" value="${escapeHtml(h.kk)}" placeholder="contoh: Budi Santoso">
+      <input id="f_kk" value="${esc(h.kk)}" placeholder="contoh: Budi Santoso">
       <label>Jumlah Anggota Keluarga</label>
-      <input id="f_jumlah" type="number" min="0" value="${escapeHtml(h.jumlah)}" placeholder="contoh: 4">
+      <input id="f_jumlah" type="number" min="0" value="${esc(h.jumlah)}" placeholder="contoh: 4">
       <label>Catatan</label>
-      <textarea id="f_catatan" placeholder="catatan tambahan...">${escapeHtml(h.catatan)}</textarea>
+      <textarea id="f_catatan" placeholder="catatan tambahan...">${esc(h.catatan)}</textarea>
       <div class="actions">
-        <button class="primary" id="btnSimpanRumah" onclick="saveHouse(${h.id})">Simpan</button>
+        <button class="primary" id="btnSimpan" onclick="saveHouse(${h.id})">Simpan</button>
         <button class="danger" onclick="deleteHouse(${h.id})">Hapus</button>
       </div>
-    </div>
-  `;
+    </div>`;
 }
 
-function setStatus(id, status){
-  const h = houses.find(x=>x.id===id);
-  if(h.status === status) return;
-  const label = status === 'done' ? 'Sudah disensus' : 'Belum disensus';
-  showConfirm(`Ubah status rumah ini menjadi "${label}"?`, async () => {
-    h.status = status;
+function setStatus(id,status){
+  const h=houses.find(x=>x.id===id);
+  if(h.status===status) return;
+  const label=status==='done'?'Sudah disensus':'Belum disensus';
+  showConfirm('Ubah Status',`Ubah status menjadi "${label}"?`,false,async()=>{
+    h.status=status;
     h.marker.setIcon(makeIcon(status));
     h.marker.bindPopup(popupContent(h));
-    renderForm();
-    renderList();
-    updateStats();
-    const { error } = await sb.from('houses').update({status}).eq('id', id);
-    if(error) alert('Gagal menyimpan status: ' + error.message);
+    renderForm();renderList();updateStats();
+    const {error}=await sb.from('houses').update({status}).eq('id',id);
+    if(error) alert('Gagal: '+error.message);
   });
 }
 
 function saveHouse(id){
-  showConfirm('Simpan perubahan data rumah ini?', async () => {
-    const h = houses.find(x=>x.id===id);
-    h.no = document.getElementById('f_no').value;
-    h.kk = document.getElementById('f_kk').value;
-    h.jumlah = document.getElementById('f_jumlah').value;
-    h.catatan = document.getElementById('f_catatan').value;
+  showConfirm('Simpan Data','Simpan perubahan data rumah ini?',false,async()=>{
+    const h=houses.find(x=>x.id===id);
+    h.no=document.getElementById('f_no').value;
+    h.kk=document.getElementById('f_kk').value;
+    h.jumlah=document.getElementById('f_jumlah').value;
+    h.catatan=document.getElementById('f_catatan').value;
     h.marker.bindPopup(popupContent(h));
     renderList();
-    const btn = document.getElementById('btnSimpanRumah');
-    const { error } = await sb.from('houses').update({
-      no: h.no, kk: h.kk, jumlah: h.jumlah, catatan: h.catatan
-    }).eq('id', id);
-    if(error){
-      alert('Gagal menyimpan ke server: ' + error.message);
-    } else if(btn){
-      const old = btn.textContent;
-      btn.textContent = 'Tersimpan ✓';
-      setTimeout(()=>{ btn.textContent = old; }, 1200);
-    }
+    const btn=document.getElementById('btnSimpan');
+    const {error}=await sb.from('houses').update({no:h.no,kk:h.kk,jumlah:h.jumlah,catatan:h.catatan}).eq('id',id);
+    if(error){alert('Gagal: '+error.message);}
+    else if(btn){const old=btn.textContent;btn.textContent='Tersimpan ✓';setTimeout(()=>{btn.textContent=old;},1200);}
+  });
+}
+
+function deleteHouse(id){
+  showConfirm('Hapus Rumah','Hapus penanda rumah ini? Data yang sudah diisi akan hilang.',true,async()=>{
+    const h=houses.find(x=>x.id===id);
+    if(!h) return;
+    map.removeLayer(h.marker);
+    houses=houses.filter(x=>x.id!==id);
+    selectedId=null;
+    renderForm();renderList();updateStats();
+    const {error}=await sb.from('houses').delete().eq('id',id);
+    if(error) alert('Gagal menghapus: '+error.message);
   });
 }
 
 function popupContent(h){
-  return `<b>${escapeHtml(h.no || 'Tanpa nomor')}</b><br>${escapeHtml(h.kk || '-')}<br>
-  Anggota: ${escapeHtml(h.jumlah || '-')}<br>
-  Status: ${h.status==='done' ? '✅ Sudah disensus' : '⏳ Belum disensus'}`;
-}
-
-async function deleteHouse(id){
-  showConfirm('Hapus penanda rumah ini? Data yang sudah diisi akan hilang.', async () => {
-    const h = houses.find(x=>x.id===id);
-    map.removeLayer(h.marker);
-    houses = houses.filter(x=>x.id!==id);
-    selectedId = null;
-    renderForm();
-    renderList();
-    updateStats();
-    const { error } = await sb.from('houses').delete().eq('id', id);
-    if(error) alert('Gagal menghapus di server: ' + error.message);
-  });
+  return `<b>${esc(h.no||'Tanpa nomor')}</b><br>${esc(h.kk||'-')}<br>Anggota: ${esc(h.jumlah||'-')}<br>Status: ${h.status==='done'?'✅ Sudah':'⏳ Belum'}`;
 }
 
 function renderList(filter=''){
-  const section = document.getElementById('listSection');
-  let list = houses;
+  const section=document.getElementById('listSection');
+  let list=houses;
   if(filter){
-    const f = filter.toLowerCase();
-    list = houses.filter(h =>
-      (h.no||'').toLowerCase().includes(f) ||
-      (h.kk||'').toLowerCase().includes(f)
-    );
+    const f=filter.toLowerCase();
+    list=houses.filter(h=>(h.no||'').toLowerCase().includes(f)||(h.kk||'').toLowerCase().includes(f));
   }
-  if(list.length === 0){
-    section.innerHTML = `<div class="empty-note">${houses.length===0 ? 'Belum ada rumah yang ditandai.' : 'Tidak ada hasil.'}</div>`;
+  if(list.length===0){
+    section.innerHTML=`<div class="empty-note">${houses.length===0?'Belum ada rumah yang ditandai.':'Tidak ada hasil pencarian.'}</div>`;
     return;
   }
-  section.innerHTML = list.map(h => `
+  section.innerHTML=list.map(h=>`
     <div class="list-item" onclick="focusHouse(${h.id})">
       <div class="dot ${h.status}"></div>
       <div class="meta">
-        <div class="num">${escapeHtml(h.no || 'Rumah #'+h.id)}</div>
-        <div class="name">${escapeHtml(h.kk || 'Belum ada nama')}</div>
+        <div class="num">${esc(h.no||'Rumah #'+h.id)}</div>
+        <div class="name">${esc(h.kk||'Belum ada nama')}</div>
       </div>
-    </div>
-  `).join('');
+    </div>`).join('');
 }
 
 function focusHouse(id){
-  const h = houses.find(x=>x.id===id);
-  map.setView([h.lat, h.lng], Math.max(map.getZoom(), 17));
+  const h=houses.find(x=>x.id===id);
+  map.setView([h.lat,h.lng],Math.max(map.getZoom(),17));
   h.marker.openPopup();
   selectHouse(id);
 }
 
 function updateStats(){
-  document.getElementById('statTotal').textContent = houses.length;
-  document.getElementById('statDone').textContent = houses.filter(h=>h.status==='done').length;
-  document.getElementById('statTodo').textContent = houses.filter(h=>h.status==='todo').length;
+  document.getElementById('statTotal').textContent=houses.length;
+  document.getElementById('statDone').textContent=houses.filter(h=>h.status==='done').length;
+  document.getElementById('statTodo').textContent=houses.filter(h=>h.status==='todo').length;
 }
 
-function escapeHtml(s){
-  return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+// ===== BOUNDARIES =====
+function refreshMask(){
+  if(maskLayer) map.removeLayer(maskLayer);
+  if(boundaries.length===0) return;
+  const rings=[WORLD_RING,...boundaries.map(b=>JSON.parse(b.geojson))];
+  maskLayer=L.polygon(rings,{color:'transparent',weight:0,fillColor:'#555',fillOpacity:0.35,interactive:false}).addTo(map);
+  maskLayer.bringToBack();
 }
 
-function showConfirm(message, onYes, onNo){
-  const overlay = document.createElement('div');
-  overlay.className = 'confirm-overlay';
-  overlay.innerHTML = `
-    <div class="confirm-box">
-      <p>${escapeHtml(message)}</p>
-      <div class="confirm-actions">
-        <button class="no">Batal</button>
-        <button class="yes">Ya, lanjutkan</button>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(overlay);
-  overlay.querySelector('.yes').onclick = () => { document.body.removeChild(overlay); onYes && onYes(); };
-  overlay.querySelector('.no').onclick = () => { document.body.removeChild(overlay); onNo && onNo(); };
-  overlay.onclick = (e) => { if(e.target === overlay){ document.body.removeChild(overlay); onNo && onNo(); } };
+async function loadBoundary(){
+  showLoading('Memuat batas wilayah...');
+  let data, error;
+  try{ ({ data, error } = await sb.from('boundaries').select('*').eq('user_id',currentUser.id).order('id')); }
+  catch(e){ error = e; }
+  hideLoading();
+  if(error){console.warn('boundaries error:',(error.message||String(error)));return;}
+  boundaries=data||[];
+  boundaries.forEach(b=>{
+    const latlngs=JSON.parse(b.geojson);
+    b.layer=L.polygon(latlngs,b.locked?lockedStyle:editStyle).addTo(boundaryLayerGroup);
+    b.layer.bindTooltip(b.name||'SLS',{sticky:true});
+  });
+  refreshMask();renderBoundaryList();
+  if(boundaries.length>0){
+    const group=L.featureGroup(boundaries.map(b=>b.layer));
+    map.fitBounds(group.getBounds(),{maxZoom:17});
+  }
 }
 
-document.getElementById('searchBox').addEventListener('input', e => renderList(e.target.value));
+function renderBoundaryList(){
+  const section=document.getElementById('boundarySection');
+  if(boundaries.length===0){
+    section.innerHTML=`<div class="empty-note" style="padding:8px 14px;font-size:12px;">Belum ada batas SLS. Klik "Tambah Batas SLS".</div>`;
+    return;
+  }
+  section.innerHTML=boundaries.map(b=>`
+    <div class="boundary-item">
+      <div class="bicon" style="background:${b.locked?'#c0392b':'#E8520A'}"></div>
+      <input class="bname" value="${esc(b.name||'')}" placeholder="Nama SLS" onchange="renameBoundary(${b.id},this.value)">
+      <button class="bbtn ${editingBoundaryItem&&editingBoundaryItem.id===b.id?'editing-active':''}" onclick="toggleEditBoundary(${b.id})">${editingBoundaryItem&&editingBoundaryItem.id===b.id?'Selesai':'✏️'}</button>
+      <button class="bbtn ${b.locked?'locked':''}" onclick="toggleLockBoundary(${b.id})">${b.locked?'🔒':'🔓'}</button>
+      <button class="bbtn" onclick="deleteBoundaryItem(${b.id})">🗑️</button>
+    </div>`).join('');
+}
 
-renderForm();
-renderList();
-updateStats();
-loadHouses();
-loadBoundary();
+function startNewBoundary(){
+  if(editingBoundary){alert('Selesaikan dulu pengeditan batas yang sedang berjalan.');return;}
+  editingBoundary=true;
+  document.getElementById('boundaryToggle').classList.add('editing');
+  document.getElementById('boundaryLabel').textContent='Klik peta utk gambar...';
+  if(!drawControl){
+    drawControl=new L.Control.Draw({
+      position:'topright',
+      draw:{polygon:{allowIntersection:false,shapeOptions:editStyle},polyline:false,rectangle:false,circle:false,marker:false,circlemarker:false},
+      edit:false
+    });
+  }
+  map.addControl(drawControl);
+  function onCreate(e){
+    map.off(L.Draw.Event.CREATED,onCreate);
+    map.removeControl(drawControl);
+    editingBoundary=false;
+    document.getElementById('boundaryToggle').classList.remove('editing');
+    document.getElementById('boundaryLabel').textContent='Tambah Batas SLS';
+    const layer=e.layer;
+    layer.setStyle(editStyle);
+    boundaryLayerGroup.addLayer(layer);
+    const latlngs=layer.getLatLngs()[0].map(p=>[p.lat,p.lng]);
+    saveNewBoundary(latlngs,layer);
+  }
+  map.on(L.Draw.Event.CREATED,onCreate);
+}
+
+async function saveNewBoundary(latlngs,layer){
+  showPrompt('Nama wilayah SLS ini:','SLS Baru',async(name)=>{
+    if(!name) name='SLS Baru';
+    const geojson=JSON.stringify(latlngs);
+    showLoading('Menyimpan batas...');
+    let data, error;
+    try{ ({ data, error } = await sb.from('boundaries').insert({
+      name,geojson,locked:false,
+      petugas_code:currentPetugas.code,
+      petugas_name:currentPetugas.name,
+      user_id:currentUser.id
+    }).select().single()); }
+    catch(e){ error = e; }
+    hideLoading();
+    if(error){alert('Gagal menyimpan batas: '+(error.message||String(error)));boundaryLayerGroup.removeLayer(layer);return;}
+    data.layer=layer;
+    layer.bindTooltip(data.name,{sticky:true});
+    boundaries.push(data);
+    refreshMask();renderBoundaryList();
+  },()=>{boundaryLayerGroup.removeLayer(layer);refreshMask();});
+}
+
+function toggleEditBoundary(id){
+  const b=boundaries.find(x=>x.id===id);
+  if(editingBoundaryItem&&editingBoundaryItem.id===id){finishEditBoundary();return;}
+  if(editingBoundaryItem){alert('Selesaikan dulu pengeditan batas lain.');return;}
+  if(b.locked){alert('Batas ini terkunci. Buka kunci dulu.');return;}
+  editingBoundaryItem=b;
+  b.layer.editing.enable();
+  renderBoundaryList();
+}
+
+async function finishEditBoundary(){
+  const b=editingBoundaryItem;
+  b.layer.editing.disable();
+  const latlngs=b.layer.getLatLngs()[0].map(p=>[p.lat,p.lng]);
+  const geojson=JSON.stringify(latlngs);
+  const {error}=await sb.from('boundaries').update({geojson}).eq('id',b.id);
+  if(error) alert('Gagal menyimpan: '+error.message);
+  else b.geojson=geojson;
+  editingBoundaryItem=null;
+  refreshMask();renderBoundaryList();
+}
+
+async function toggleLockBoundary(id){
+  const b=boundaries.find(x=>x.id===id);
+  const newLocked=!b.locked;
+  const {error}=await sb.from('boundaries').update({locked:newLocked}).eq('id',id);
+  if(error){alert('Gagal: '+error.message);return;}
+  b.locked=newLocked;
+  b.layer.setStyle(newLocked?lockedStyle:editStyle);
+  if(newLocked&&editingBoundaryItem&&editingBoundaryItem.id===id){b.layer.editing.disable();editingBoundaryItem=null;}
+  renderBoundaryList();
+}
+
+function deleteBoundaryItem(id){
+  showConfirm('Hapus Batas SLS','Hapus batas wilayah ini dari peta?',true,async()=>{
+    const b=boundaries.find(x=>x.id===id);
+    if(!b) return;
+    boundaryLayerGroup.removeLayer(b.layer);
+    boundaries=boundaries.filter(x=>x.id!==id);
+    if(editingBoundaryItem&&editingBoundaryItem.id===id) editingBoundaryItem=null;
+    refreshMask();renderBoundaryList();
+    const {error}=await sb.from('boundaries').delete().eq('id',id);
+    if(error) alert('Gagal menghapus: '+error.message);
+  });
+}
+
+async function renameBoundary(id,name){
+  const b=boundaries.find(x=>x.id===id);
+  b.name=name;
+  b.layer.bindTooltip(name||'SLS',{sticky:true});
+  const {error}=await sb.from('boundaries').update({name}).eq('id',id);
+  if(error) alert('Gagal menyimpan nama: '+error.message);
+}
+
+// ===== UTILITIES =====
+function esc(s){
+  return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function showConfirm(title,message,isDanger,onYes,onNo){
+  const o=document.createElement('div');
+  o.className='confirm-overlay';
+  o.innerHTML=`<div class="confirm-box">
+    <div class="confirm-title">${esc(title)}</div>
+    <p>${esc(message)}</p>
+    <div class="confirm-actions">
+      <button class="no">Batal</button>
+      <button class="yes ${isDanger?'danger-yes':''}">Ya, lanjutkan</button>
+    </div></div>`;
+  document.body.appendChild(o);
+  o.querySelector('.yes').addEventListener('click',()=>{document.body.removeChild(o);onYes&&onYes();});
+  o.querySelector('.no').addEventListener('click', ()=>{document.body.removeChild(o);onNo&&onNo();});
+}
+
+function showPrompt(label,defaultValue,onOk,onCancel){
+  const o=document.createElement('div');
+  o.className='prompt-overlay';
+  o.innerHTML=`<div class="prompt-box">
+    <label>${esc(label)}</label>
+    <input id="pInput" value="${esc(defaultValue)}" type="text">
+    <div class="prompt-actions">
+      <button class="cancel">Batal</button>
+      <button class="ok">OK</button>
+    </div></div>`;
+  document.body.appendChild(o);
+  const inp=o.querySelector('#pInput');
+  inp.focus();inp.select();
+  o.querySelector('.ok').addEventListener('click',()=>{const v=inp.value.trim();document.body.removeChild(o);onOk&&onOk(v||defaultValue);});
+  o.querySelector('.cancel').addEventListener('click',()=>{document.body.removeChild(o);onCancel&&onCancel();});
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter')o.querySelector('.ok').click();if(e.key==='Escape')o.querySelector('.cancel').click();});
+}
 </script>
 </body>
 </html>
