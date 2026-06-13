@@ -8,7 +8,24 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// Load Supabase dari multiple CDN sebagai fallback
+(function(){
+  const urls = [
+    'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js',
+    'https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.min.js'
+  ];
+  let idx = 0;
+  function tryLoad(){
+    if(idx >= urls.length){ console.error('Supabase gagal dimuat dari semua CDN'); return; }
+    const s = document.createElement('script');
+    s.src = urls[idx++];
+    s.onerror = tryLoad;
+    document.head.appendChild(s);
+  }
+  tryLoad();
+})();
+</script>
 <style>
 .icon{display:inline-block;vertical-align:middle;width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
 .icon-lg{width:20px;height:20px;}
@@ -187,7 +204,17 @@ header{
   font-size:12px;box-shadow:0 2px 8px rgba(0,0,0,0.12);
   z-index:500;color:var(--bps-orange-deep);
   font-weight:600;white-space:nowrap;
+  display:flex;align-items:center;gap:8px;
 }
+.hint-close{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:18px;height:18px;border-radius:50%;
+  background:var(--line);color:var(--bps-orange-deep);
+  font-size:14px;line-height:1;font-weight:800;
+  cursor:pointer;flex-shrink:0;border:none;padding:0;
+  transition:background .15s;
+}
+.hint-close:hover{background:var(--bps-orange-deep);color:white;}
 .layer-toggle{
   position:absolute;top:14px;right:14px;z-index:500;
   background:var(--white);border:1px solid var(--line);
@@ -513,25 +540,26 @@ body.is-offline .offline-banner{display:flex;}
   .panel{width:100%;max-height:55%;border-left:none;border-top:1px solid var(--line);}
   .panel.panel-collapsed{width:100%;min-width:0;max-height:0;border-top:none;overflow:hidden;}
 
-  /* Mobile: toggle sits horizontally centred at the TOP edge of the panel area */
+  /* Mobile: toggle sits as a small pill at bottom-right, just above the panel */
   .panel-toggle{
     /* override desktop positioning */
-    top:auto;right:auto;
+    top:auto;right:14px;
     transform:none;
-    bottom:55%;        /* sits just above the panel (55% = panel max-height) */
-    left:50%;
-    margin-left:-23px; /* half of 46px */
-    width:46px;height:26px;
-    box-shadow:0 -2px 6px rgba(0,0,0,0.08);
+    bottom:calc(55% + 10px);   /* sits just above the panel (55% = panel max-height) */
+    left:auto;
+    margin-left:0;
+    width:40px;height:40px;
+    border-radius:50%;
+    box-shadow:0 2px 8px rgba(0,0,0,0.18);
     transition:bottom .2s ease;
   }
-  .panel-toggle .chev{transform:rotate(90deg);} /* ▾ pointing down = collapse */
-  /* When panel is collapsed, button moves to very bottom of viewport */
+  .panel-toggle .chev{transform:rotate(180deg);} /* ▴ pointing up = expand panel */
+  /* When panel is collapsed, button moves to very bottom-right of viewport */
   .panel-collapsed-active .panel-toggle{
-    bottom:0;
-    box-shadow:0 2px 6px rgba(0,0,0,0.08);
+    bottom:14px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.18);
   }
-  .panel-collapsed-active .panel-toggle .chev{transform:rotate(-90deg);} /* ▴ pointing up = expand */
+  .panel-collapsed-active .panel-toggle .chev{transform:rotate(0deg);} /* ▾ pointing down = collapse */
 }
 /* Global loading overlay */
 .loading-overlay{
@@ -678,7 +706,7 @@ body.is-offline .offline-banner{display:flex;}
     <div class="boundary-toggle" id="boundaryToggle" onclick="startNewBoundary()">
       <span><svg class="icon icon-sm" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span><span id="boundaryLabel">Tambah Batas SLS</span>
     </div>
-    <div class="hint" id="mapHint"><svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 1 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> Klik peta untuk menambah rumah baru <span style="cursor:pointer;margin-left:6px;font-weight:800;" onclick="dismissHint()">&times;</span></div>
+    <div class="hint" id="mapHint"><svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 1 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> Klik peta untuk menambah rumah baru <button class="hint-close" onclick="dismissHint()" title="Tutup">&times;</button></div>
     <div class="panel-toggle" id="panelToggle" onclick="togglePanel()">
       <svg class="icon icon-sm chev" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
     </div>
@@ -750,19 +778,54 @@ let pendingQueue = [];
 const QUEUE_KEY = 'sensus_pending_queue';
 
 // ===== SUPABASE INIT =====
-(function() {
-  const SUPABASE_URL = 'https://ojybnopbaipceyttetyx.supabase.co';
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qeWJub3BiYWlwY2V5dHRldHl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzMzkwMzEsImV4cCI6MjA5NjkxNTAzMX0.n00jlGfOGHWPfy-V2ohI7SGdgUXbm73nYIxGN54EzWQ';
-  if (typeof supabase === 'undefined') {
-    console.warn('Supabase library not loaded');
+const SUPABASE_URL = 'https://ojybnopbaipceyttetyx.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qeWJub3BiYWlwY2V5dHRldHl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzMzkwMzEsImV4cCI6MjA5NjkxNTAzMX0.n00jlGfOGHWPfy-V2ohI7SGdgUXbm73nYIxGN54EzWQ';
+
+function tryInitSupabase(retries){
+  if(typeof supabase !== 'undefined'){
+    try{ sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); }
+    catch(e){ console.error('Supabase createClient error:', e); }
+    checkInitialSession();
     return;
   }
-  try {
-    sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  } catch(e) {
-    console.error('Supabase error:', e);
+  if(retries > 0){
+    setTimeout(()=>tryInitSupabase(retries-1), 300);
+  } else {
+    console.warn('Supabase library gagal dimuat. Mode offline aktif.');
+    checkInitialSession();
   }
-})();
+}
+
+async function checkInitialSession(){
+  hideLoading();
+  if(!sb) return;
+  try{
+    const hasAuthFragment = window.location.hash && (
+      window.location.hash.includes('access_token') ||
+      window.location.hash.includes('refresh_token') ||
+      window.location.hash.includes('type=signup') ||
+      window.location.hash.includes('type=recovery')
+    );
+    if(hasAuthFragment){
+      showLoading('Memproses login...');
+      let data, error;
+      try{ ({ data, error } = await sb.auth.getSession()); }catch(e){ error = e; }
+      hideLoading();
+      if(error){ setMsg('loginMsg','Gagal memproses token: '+(error.message||error)); }
+      if(data?.session){ handleSession(data.session); }
+      try{ history.replaceState(null,'',window.location.pathname+window.location.search); }catch(e){}
+      return;
+    }
+    const { data } = await sb.auth.getSession();
+    if(data?.session) handleSession(data.session);
+  }catch(e){ console.warn('Gagal ambil session:', e); }
+  hideLoading();
+}
+
+window.addEventListener('DOMContentLoaded', ()=>{
+  hideLoading();
+  tryInitSupabase(15); // retry 15x @ 300ms = 4.5 detik max
+});
 
 // ===== AUTH UI =====
 
@@ -955,49 +1018,21 @@ async function doLogout(){
   });
 }
 
-// Cek session saat halaman dibuka
-(async()=>{
-  if(!sb){ console.warn('⚠️ Supabase tidak tersedia. Mode offline diaktifkan.'); return; }
-  
-  try{
-    const hasAuthFragment = window.location.hash && (
-      window.location.hash.includes('access_token') ||
-      window.location.hash.includes('refresh_token') ||
-      window.location.hash.includes('type=signup') ||
-      window.location.hash.includes('type=recovery')
-    );
-    if(hasAuthFragment){
-      showLoading('Memproses login...');
-      let data, error;
-      try{
-        ({ data, error } = await sb.auth.getSession());
-      }catch(e){ error = e; }
-      hideLoading();
-      if(error){
-        console.warn('Supabase getSession error:', error.message || error);
-        setMsg('loginMsg','Gagal memproses token: '+(error.message||error));
-      }
-      if(data?.session){
-        handleSession(data.session);
-      }
-      try{ history.replaceState(null, '', window.location.pathname + window.location.search); }catch(e){}
-      return;
-    }
-  }catch(e){ console.warn('Error parsing supabase redirect:', e); hideLoading(); }
-
-  try{
-    const { data } = await sb.auth.getSession();
-    if(data?.session) handleSession(data.session);
-  }catch(e){ console.warn('Gagal ambil session:', e); }
-})();
+// (session check dipindah ke checkInitialSession() di atas)
 
 // Loading helper functions
 function showLoading(msg){
-  try{document.getElementById('globalLoading').style.display='flex';document.getElementById('globalLoading').setAttribute('aria-hidden','false');}catch(e){}
-  try{if(msg)document.getElementById('globalLoadingMsg').textContent=msg;}catch(e){}
+  try{
+    const el = document.getElementById('globalLoading');
+    if(el){ el.style.display='flex'; el.setAttribute('aria-hidden','false'); }
+    if(msg){ const m=document.getElementById('globalLoadingMsg'); if(m) m.textContent=msg; }
+  }catch(e){}
 }
 function hideLoading(){
-  try{document.getElementById('globalLoading').style.display='none';document.getElementById('globalLoading').setAttribute('aria-hidden','true');}catch(e){}
+  try{
+    const el = document.getElementById('globalLoading');
+    if(el){ el.style.display='none'; el.setAttribute('aria-hidden','true'); }
+  }catch(e){}
 }
 
 // ===== TOAST (with dedup) =====
@@ -1310,32 +1345,46 @@ function initApp(){
         return;
       }
       const lat=e.latlng.lat, lng=e.latlng.lng;
-      if(!navigator.onLine || !sb){
-        const tempId='tmp_'+Date.now();
-        const house=addHouseToMap({id:tempId,lat,lng,no:'',kk:'',jumlah:'',catatan:'',status:'todo',petugas_code:currentPetugas?.code,_unsynced:true});
-        selectHouse(house.id);
-        renderList(); updateStats();
-        const hintEl=document.getElementById('mapHint'); if(hintEl) hintEl.style.display='none';
-        queueOperation({table:'houses',type:'insert',id:tempId,values:{
-          lat,lng,no:'',kk:'',jumlah:'',catatan:'',status:'todo',
-          petugas_code:currentPetugas?.code, petugas_name:currentPetugas?.name, user_id:currentUser?.id
-        }});
-        showToast('Rumah ditambahkan (offline). Akan disinkron otomatis.','warn');
-        return;
-      }
-      const { data, error } = await sb.from('houses').insert({
-        lat, lng,
-        no:'', kk:'', jumlah:'', catatan:'', status:'todo',
-        petugas_code: currentPetugas.code,
-        petugas_name: currentPetugas.name,
-        user_id: currentUser.id
-      }).select().single();
-      if(error){ showToast('Gagal menyimpan rumah baru: '+(error.message||String(error)),'error'); return; }
-      const house = addHouseToMap(data);
-      selectHouse(house.id);
-      renderList(); updateStats();
-      const hintEl=document.getElementById('mapHint'); if(hintEl) hintEl.style.display='none';
-      showToast('Rumah baru ditambahkan.','success');
+      // Tampilkan konfirmasi sebelum menambah penanda
+      showConfirm(
+        'Tambah Titik Penanda',
+        'Apakah Anda ingin menambahkan titik penanda rumah baru di lokasi ini?',
+        false,
+        async function(){
+
+          // Pengguna klik Ya
+          if(!navigator.onLine || !sb){
+            const tempId='tmp_'+Date.now();
+            const house=addHouseToMap({id:tempId,lat,lng,no:'',kk:'',jumlah:'',catatan:'',status:'todo',petugas_code:currentPetugas?.code,hp:'',jenis_bangunan:'',sls_name:detectSLS(lat,lng),_unsynced:true});
+            selectHouse(house.id);
+            renderList(); updateStats();
+            const hintEl=document.getElementById('mapHint'); if(hintEl) hintEl.style.display='none';
+            queueOperation({table:'houses',type:'insert',id:tempId,values:{
+              lat,lng,no:'',kk:'',jumlah:'',catatan:'',status:'todo',hp:'',jenis_bangunan:'',sls_name:detectSLS(lat,lng),
+              petugas_code:currentPetugas?.code, petugas_name:currentPetugas?.name, user_id:currentUser?.id
+            }});
+            showToast('Rumah ditambahkan (offline). Akan disinkron otomatis.','warn');
+            return;
+          }
+          const slsName = detectSLS(lat, lng);
+          const { data, error } = await sb.from('houses').insert({
+            lat, lng,
+            no:'', kk:'', jumlah:'', catatan:'', status:'todo',
+            hp:'', jenis_bangunan:'', sls_name: slsName,
+            petugas_code: currentPetugas.code,
+            petugas_name: currentPetugas.name,
+            user_id: currentUser.id
+          }).select().single();
+          if(error){ showToast('Gagal menyimpan rumah baru: '+(error.message||String(error)),'error'); return; }
+          const house = addHouseToMap(data);
+          selectHouse(house.id);
+          renderList(); updateStats();
+          const hintEl=document.getElementById('mapHint'); if(hintEl) hintEl.style.display='none';
+          showToast('Rumah baru ditambahkan.','success');
+        },
+        null, // onNo: tidak ada aksi saat Tidak
+        'Ya, Tambahkan'
+      );
     });
 
     renderForm(); renderList(); updateStats();
@@ -1438,7 +1487,7 @@ function makeIcon(status,unsynced){
 
 function addHouseToMap(row){
   const marker=L.marker([row.lat,row.lng],{icon:makeIcon(row.status,!!row._unsynced),draggable:true}).addTo(map);
-  const house={id:row.id,lat:row.lat,lng:row.lng,marker,no:row.no||'',kk:row.kk||'',jumlah:row.jumlah||'',catatan:row.catatan||'',status:row.status||'todo',petugas_code:row.petugas_code||'',_unsynced:!!row._unsynced};
+  const house={id:row.id,lat:row.lat,lng:row.lng,marker,no:row.no||'',kk:row.kk||'',jumlah:row.jumlah||'',catatan:row.catatan||'',status:row.status||'todo',petugas_code:row.petugas_code||'',_unsynced:!!row._unsynced,hp:row.hp||'',jenis_bangunan:row.jenis_bangunan||'',sls_name:row.sls_name||''};
   marker.bindPopup(popupContent(house));
   marker.on('click',()=>selectHouse(house.id));
   marker.on('dragstart',()=>{
@@ -1448,9 +1497,11 @@ function addHouseToMap(row){
     hideDragHint();
     house.lat=ev.target.getLatLng().lat;
     house.lng=ev.target.getLatLng().lng;
-    const {error}=await dbOp('houses','update',house.id,{lat:house.lat,lng:house.lng});
+    house.sls_name = detectSLS(house.lat, house.lng);
+    const {error}=await dbOp('houses','update',house.id,{lat:house.lat,lng:house.lng,sls_name:house.sls_name});
     if(error) showToast('Gagal menyimpan posisi: '+(error.message||String(error)),'error');
-    else showToast('Posisi rumah diperbarui.','success');
+    else showToast('Posisi rumah diperbarui.'+(house.sls_name?' SLS: '+house.sls_name:''),'success');
+    if(selectedId===house.id) renderForm();
     applyUnsyncedMarks();
   });
   houses.push(house);
@@ -1525,8 +1576,26 @@ function renderForm(){
       <input id="f_no" value="${esc(h.no)}" placeholder="contoh: 014B-012">
       <label>Nama Kepala Keluarga</label>
       <input id="f_kk" value="${esc(h.kk)}" placeholder="contoh: Budi Santoso">
+      <label>No. HP Responden</label>
+      <input id="f_hp" type="tel" value="${esc(h.hp)}" placeholder="contoh: 08123456789">
       <label>Jumlah Anggota Keluarga</label>
       <input id="f_jumlah" type="number" min="0" max="50" value="${esc(h.jumlah)}" placeholder="contoh: 4">
+      <label>Jenis Bangunan</label>
+      <select id="f_jenis">
+        <option value="" ${!h.jenis_bangunan?'selected':''}>-- Pilih Jenis --</option>
+        <option value="Rumah Tinggal Biasa" ${h.jenis_bangunan==='Rumah Tinggal Biasa'?'selected':''}>Rumah Tinggal Biasa</option>
+        <option value="Rumah Susun/Apartemen" ${h.jenis_bangunan==='Rumah Susun/Apartemen'?'selected':''}>Rumah Susun/Apartemen</option>
+        <option value="Kontrakan/Kos" ${h.jenis_bangunan==='Kontrakan/Kos'?'selected':''}>Kontrakan/Kos</option>
+        <option value="Ruko/Toko" ${h.jenis_bangunan==='Ruko/Toko'?'selected':''}>Ruko/Toko</option>
+        <option value="Tempat Ibadah" ${h.jenis_bangunan==='Tempat Ibadah'?'selected':''}>Tempat Ibadah</option>
+        <option value="Bangunan Kosong" ${h.jenis_bangunan==='Bangunan Kosong'?'selected':''}>Bangunan Kosong</option>
+        <option value="Lainnya" ${h.jenis_bangunan==='Lainnya'?'selected':''}>Lainnya</option>
+      </select>
+      <label>Berada di SLS</label>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <input id="f_sls" value="${esc(h.sls_name)}" placeholder="Auto-deteksi dari batas SLS..." style="flex:1;" readonly>
+        <button class="bbtn" style="flex-shrink:0;padding:8px 10px;" onclick="redetectSLS(${h.id})" title="Deteksi ulang SLS">🔄</button>
+      </div>
       <label>Catatan</label>
       <textarea id="f_catatan" placeholder="catatan tambahan...">${esc(h.catatan)}</textarea>
       <div class="actions">
@@ -1535,7 +1604,7 @@ function renderForm(){
       </div>
     </div>`;
   setDirty(false);
-  ['f_no','f_kk','f_jumlah','f_catatan'].forEach(id=>{
+  ['f_no','f_kk','f_hp','f_jumlah','f_jenis','f_catatan'].forEach(id=>{
     const el=document.getElementById(id);
     if(!el) return;
     el.addEventListener('input',()=>{
@@ -1543,7 +1612,24 @@ function renderForm(){
       el.style.borderColor='';
       if(id==='f_jumlah') validateJumlahField(el);
     });
+    el.addEventListener('change',()=>{ setDirty(true); });
   });
+}
+
+function redetectSLS(id){
+  const h = houses.find(x=>x.id===id);
+  if(!h) return;
+  const detected = detectSLS(h.lat, h.lng);
+  h.sls_name = detected;
+  const el = document.getElementById('f_sls');
+  if(el){
+    el.value = detected || '';
+    el.style.borderColor = detected ? 'var(--green,#2f6e4f)' : 'var(--amber,#c98a3c)';
+    setTimeout(()=>{ el.style.borderColor=''; }, 1500);
+  }
+  if(!detected) showToast('Titik ini berada di luar semua batas SLS yang sudah digambar.','warn');
+  else showToast('SLS terdeteksi: '+detected,'success');
+  setDirty(true);
 }
 
 function validateJumlahField(el){
@@ -1575,7 +1661,9 @@ function saveHouse(id){
   if(!h) return;
   const no=document.getElementById('f_no').value.trim();
   const kk=document.getElementById('f_kk').value.trim();
+  const hp=document.getElementById('f_hp')?.value.trim()||'';
   const jumlahRaw=document.getElementById('f_jumlah').value;
+  const jenis_bangunan=document.getElementById('f_jenis')?.value||'';
   const catatan=document.getElementById('f_catatan').value.trim();
 
   // ===== VALIDATION =====
@@ -1601,7 +1689,7 @@ function saveHouse(id){
   }
   clearFieldErrors();
 
-  h.no=no; h.kk=kk; h.jumlah=jumlah; h.catatan=catatan;
+  h.no=no; h.kk=kk; h.jumlah=jumlah; h.catatan=catatan; h.hp=hp; h.jenis_bangunan=jenis_bangunan;
   h.marker.bindPopup(popupContent(h));
   renderList();
   setDirty(false);
@@ -1609,7 +1697,7 @@ function saveHouse(id){
   const btn=document.getElementById('btnSimpan');
   if(btn){ btn.disabled=true; btn.innerHTML='<span class="spinner" style="border-top-color:var(--bps-orange-deep);border-color:rgba(0,0,0,0.15);"></span>Menyimpan...'; }
 
-  dbOp('houses','update',id,{no:h.no,kk:h.kk,jumlah:h.jumlah,catatan:h.catatan}).then(({error})=>{
+  dbOp('houses','update',id,{no:h.no,kk:h.kk,jumlah:h.jumlah,catatan:h.catatan,hp:h.hp,jenis_bangunan:h.jenis_bangunan,sls_name:h.sls_name}).then(({error})=>{
     if(btn) btn.disabled=false;
     if(error){
       showToast('Gagal menyimpan: '+(error.message||String(error)),'error');
@@ -1653,7 +1741,33 @@ function deleteHouse(id){
 }
 
 function popupContent(h){
-  return `<b>${esc(h.no||'Tanpa nomor')}</b><br>${esc(h.kk||'-')}<br>Anggota: ${esc(h.jumlah||'-')}<br>Status: ${h.status==='done'?'<svg class="icon icon-sm" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Sudah':'<svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Belum'}`;
+  const slsTag = h.sls_name ? `<br>SLS: <b>${esc(h.sls_name)}</b>` : '';
+  const jenisTag = h.jenis_bangunan ? `<br>Jenis: ${esc(h.jenis_bangunan)}` : '';
+  return `<b>${esc(h.no||'Tanpa nomor')}</b><br>${esc(h.kk||'-')}<br>Anggota: ${esc(h.jumlah||'-')}<br>Status: ${h.status==='done'?'<svg class="icon icon-sm" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Sudah':'<svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Belum'}${jenisTag}${slsTag}`;
+}
+
+// Point-in-polygon (ray casting)
+function pointInPolygon(lat, lng, latlngs){
+  let inside = false;
+  const n = latlngs.length;
+  for(let i=0, j=n-1; i<n; j=i++){
+    const xi=latlngs[i][0], yi=latlngs[i][1];
+    const xj=latlngs[j][0], yj=latlngs[j][1];
+    if(((yi>lng)!==(yj>lng))&&(lat<(xj-xi)*(lng-yi)/(yj-yi)+xi)){
+      inside=!inside;
+    }
+  }
+  return inside;
+}
+
+function detectSLS(lat, lng){
+  for(const b of boundaries){
+    try{
+      const ring = JSON.parse(b.geojson);
+      if(pointInPolygon(lat, lng, ring)) return b.name || 'SLS Tanpa Nama';
+    } catch(e){}
+  }
+  return '';
 }
 
 function renderList(filter){
@@ -1867,15 +1981,15 @@ function esc(s){
   return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-function showConfirm(title,message,isDanger,onYes,onNo){
+function showConfirm(title,message,isDanger,onYes,onNo,yesLabel){
   const o=document.createElement('div');
   o.className='confirm-overlay';
   o.innerHTML=`<div class="confirm-box">
     <div class="confirm-title">${esc(title)}</div>
     <p>${esc(message)}</p>
     <div class="confirm-actions">
-      <button class="no">Batal</button>
-      <button class="yes ${isDanger?'danger-yes':''}">Ya, lanjutkan</button>
+      <button class="no">Tidak</button>
+      <button class="yes ${isDanger?'danger-yes':''}">${esc(yesLabel||'Ya, lanjutkan')}</button>
     </div></div>`;
   document.body.appendChild(o);
   o.querySelector('.yes').addEventListener('click',()=>{document.body.removeChild(o);onYes&&onYes();});
