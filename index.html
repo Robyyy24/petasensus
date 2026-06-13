@@ -224,7 +224,37 @@ header{
   border-left:1px solid var(--line);
   overflow-y:auto;flex-shrink:0;
   display:flex;flex-direction:column;
+  max-height:100%;
+  transition:width .2s ease, min-width .2s ease;
+  position:relative;
 }
+.panel.panel-collapsed{
+  width:0;min-width:0;border-left:none;overflow:hidden;
+}
+
+/* Toggle button lives OUTSIDE .panel so it stays visible when panel is hidden */
+.panel-toggle{
+  position:absolute;
+  /* Desktop: vertically centred on the left edge of the panel */
+  top:50%;right:320px;
+  transform:translateY(-50%) translateX(50%);
+  width:26px;height:46px;
+  background:var(--white);
+  border:1px solid var(--line);border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;z-index:600;
+  box-shadow:-2px 0 6px rgba(0,0,0,0.08);
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation;
+  color:var(--bps-orange-deep);
+  transition:right .2s ease;
+}
+.panel-toggle .chev{transition:transform .2s ease;}
+/* When panel is collapsed, button moves to window right edge */
+.panel-collapsed-active .panel-toggle{
+  right:0;
+  box-shadow:2px 0 6px rgba(0,0,0,0.08);
+}
+.panel-collapsed-active .panel-toggle .chev{transform:rotate(180deg);}
 .panel-section{padding:14px;border-bottom:1px solid var(--line);}
 .panel-section h2{
   font-size:11px;text-transform:uppercase;
@@ -277,7 +307,7 @@ button.danger:active{background:#fdf0ee;}
   padding:7px 10px;border-bottom:1px solid var(--line);
   font-size:12px;
 }
-.boundary-header{
+.section-header{
   display:flex;align-items:center;justify-content:space-between;
   padding:9px 14px;background:var(--paper);
   border-bottom:1px solid var(--line);cursor:pointer;
@@ -286,8 +316,11 @@ button.danger:active{background:#fdf0ee;}
   position:sticky;top:0;z-index:5;
   -webkit-tap-highlight-color:transparent;touch-action:manipulation;
 }
-.boundary-header .chev{transition:transform .15s;}
-.boundary-header.collapsed .chev{transform:rotate(-90deg);}
+.section-header .chev{transition:transform .15s;flex-shrink:0;}
+.section-header.collapsed .chev{transform:rotate(-90deg);}
+.section-body{overflow:hidden;}
+.section-body.collapsed{display:none;}
+.boundary-header{}
 .boundary-list{overflow:hidden;}
 .boundary-list.collapsed{display:none;}
 .boundary-item input.bname{
@@ -380,9 +413,125 @@ button.danger:active{background:#fdf0ee;}
 }
 @keyframes spin{to{transform:rotate(360deg);}}
 
+/* ===== TOAST ===== */
+.toast-container{
+  position:fixed;top:14px;left:50%;transform:translateX(-50%);
+  z-index:10500;display:flex;flex-direction:column;gap:8px;
+  width:100%;max-width:380px;padding:0 14px;align-items:center;
+}
+.toast{
+  background:var(--ink);color:white;border-radius:10px;
+  padding:10px 14px;font-size:13px;font-weight:600;
+  box-shadow:0 6px 20px rgba(0,0,0,0.25);
+  display:flex;align-items:center;gap:8px;
+  width:100%;animation:toastIn .2s ease;
+}
+.toast.err{background:var(--red);}
+.toast.ok{background:var(--success);}
+.toast.warn{background:var(--bps-gold);color:#3a2a00;}
+.toast-count{font-weight:800;opacity:0.85;}
+@keyframes toastIn{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}
+
+/* ===== OFFLINE BANNER ===== */
+.offline-banner{
+  display:none;background:var(--bps-gold);color:#3a2a00;
+  font-size:12px;font-weight:700;text-align:center;
+  padding:6px 10px;align-items:center;justify-content:center;gap:6px;
+}
+body.is-offline .offline-banner{display:flex;}
+
+/* ===== DIRTY STATE ===== */
+.dirty-badge{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:11px;font-weight:700;color:var(--bps-orange-deep);
+  background:#fff0e6;border:1px solid var(--bps-orange-light);
+  border-radius:6px;padding:3px 8px;margin-left:6px;
+  vertical-align:middle;
+}
+.dot-pending{
+  width:9px;height:9px;border-radius:50%;
+  background:var(--bps-gold);flex-shrink:0;
+  box-shadow:0 0 0 0 rgba(245,166,35,0.5);
+  animation:pendingPulse 1.4s infinite;
+}
+@keyframes pendingPulse{
+  0%{box-shadow:0 0 0 0 rgba(245,166,35,0.5);}
+  70%{box-shadow:0 0 0 5px rgba(245,166,35,0);}
+  100%{box-shadow:0 0 0 0 rgba(245,166,35,0);}
+}
+
+/* ===== FILTER BAR ===== */
+.filter-bar{display:flex;gap:6px;padding:0 14px 10px;flex-wrap:wrap;}
+.filter-chip{
+  border:1.5px solid var(--line);background:var(--white);
+  border-radius:999px;padding:5px 11px;font-size:11px;font-weight:700;
+  cursor:pointer;color:#8a7a70;-webkit-tap-highlight-color:transparent;
+}
+.filter-chip.active{background:var(--bps-orange-deep);color:white;border-color:var(--bps-orange-deep);}
+.sort-select{
+  border:1.5px solid var(--line);border-radius:999px;
+  padding:5px 9px;font-size:11px;font-weight:700;
+  color:#8a7a70;background:var(--white);width:auto;
+}
+
+/* ===== EXPORT ROW ===== */
+.export-row{display:flex;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line);}
+.export-row button{
+  flex:1;border:1.5px solid var(--bps-orange-deep);background:var(--white);
+  color:var(--bps-orange-deep);border-radius:6px;padding:8px;
+  font-size:12px;font-weight:700;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:5px;
+}
+.export-row button:active{background:#fff0e6;}
+
+/* ===== DRAG HINT ===== */
+.drag-hint{
+  position:fixed;bottom:70px;left:50%;transform:translateX(-50%);
+  background:var(--ink);color:white;font-size:12px;font-weight:600;
+  padding:8px 14px;border-radius:999px;z-index:9500;
+  box-shadow:0 4px 16px rgba(0,0,0,0.3);
+  display:flex;align-items:center;gap:6px;
+}
+
+@media(max-width:600px){
+  header{padding:8px 10px;}
+  .header-left{gap:6px;flex:1;min-width:0;}
+  .header-info h1{font-size:13px;}
+  .header-info h1 small{display:none;}
+  .header-logo{padding:3px 6px;}
+  .header-logo b{display:none;}
+  .petugas-badge{font-size:10px;padding:2px 6px;}
+  .stats{gap:5px;}
+  .stat{padding:4px 7px;min-width:38px;font-size:10px;}
+  .stat b{font-size:13px;}
+  .logout-btn{padding:5px 7px;font-size:0;}
+  .logout-btn::after{content:'⏻';font-size:14px;}
+}
+
 @media(max-width:720px){
   .main{flex-direction:column;}
-  .panel{width:100%;max-height:62%;border-left:none;border-top:1px solid var(--line);}
+  .panel{width:100%;max-height:55%;border-left:none;border-top:1px solid var(--line);}
+  .panel.panel-collapsed{width:100%;min-width:0;max-height:0;border-top:none;overflow:hidden;}
+
+  /* Mobile: toggle sits horizontally centred at the TOP edge of the panel area */
+  .panel-toggle{
+    /* override desktop positioning */
+    top:auto;right:auto;
+    transform:none;
+    bottom:55%;        /* sits just above the panel (55% = panel max-height) */
+    left:50%;
+    margin-left:-23px; /* half of 46px */
+    width:46px;height:26px;
+    box-shadow:0 -2px 6px rgba(0,0,0,0.08);
+    transition:bottom .2s ease;
+  }
+  .panel-toggle .chev{transform:rotate(90deg);} /* ▾ pointing down = collapse */
+  /* When panel is collapsed, button moves to very bottom of viewport */
+  .panel-collapsed-active .panel-toggle{
+    bottom:0;
+    box-shadow:0 2px 6px rgba(0,0,0,0.08);
+  }
+  .panel-collapsed-active .panel-toggle .chev{transform:rotate(-90deg);} /* ▴ pointing up = expand */
 }
 /* Global loading overlay */
 .loading-overlay{
@@ -490,8 +639,15 @@ button.danger:active{background:#fdf0ee;}
   </div>
 </div>
 
+<!-- Toast container -->
+<div class="toast-container" id="toastContainer"></div>
+
 <!-- ===== MAIN APP ===== -->
 <div class="app" id="mainApp" style="display:none;">
+  <div class="offline-banner" id="offlineBanner">
+    <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M1 1l22 22M16.72 11.06A10.94 10.94 0 0 1 19 12.55M5 12.55a10.94 10.94 0 0 1 5.17-2.39M10.71 5.05A16 16 0 0 1 22.58 9M1.42 9a15.91 15.91 0 0 1 4.7-2.88M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/></svg>
+    Mode offline — perubahan akan disinkronkan otomatis saat koneksi kembali (<span id="pendingCount">0</span> tertunda)
+  </div>
   <header>
     <div class="header-left">
       <div class="header-logo">
@@ -522,21 +678,51 @@ button.danger:active{background:#fdf0ee;}
     <div class="boundary-toggle" id="boundaryToggle" onclick="startNewBoundary()">
       <span><svg class="icon icon-sm" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span><span id="boundaryLabel">Tambah Batas SLS</span>
     </div>
-    <div class="hint"><svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 1 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> Klik peta untuk menambah rumah baru</div>
-    <div class="panel">
+    <div class="hint" id="mapHint"><svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 1 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> Klik peta untuk menambah rumah baru <span style="cursor:pointer;margin-left:6px;font-weight:800;" onclick="dismissHint()">&times;</span></div>
+    <div class="panel-toggle" id="panelToggle" onclick="togglePanel()">
+      <svg class="icon icon-sm chev" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>
+    <div class="panel" id="sidePanel">
       <div class="search-box">
         <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input id="searchBox" placeholder="Cari nama KK / no. rumah...">
       </div>
+      <div class="filter-bar">
+        <button class="filter-chip active" id="fltAll" onclick="setFilter('all')">Semua</button>
+        <button class="filter-chip" id="fltTodo" onclick="setFilter('todo')">Belum disensus</button>
+        <button class="filter-chip" id="fltDone" onclick="setFilter('done')">Sudah disensus</button>
+        <select class="sort-select" id="sortSelect" onchange="renderList(undefined)">
+          <option value="default">Urutan default</option>
+          <option value="no">No. Urut</option>
+          <option value="kk">Nama KK</option>
+          <option value="status">Status</option>
+        </select>
+      </div>
+      <div class="export-row">
+        <button onclick="exportCSV()"><svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Export CSV</button>
+        <button onclick="exportSummary()"><svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> Rekap</button>
+      </div>
       <div id="boundarySection">
-        <div class="boundary-header" id="boundaryHeader" onclick="toggleBoundarySection()">
+        <div class="section-header collapsed" id="boundaryHeader" onclick="toggleSection('boundary')">
           <span>Batas SLS (<span id="boundaryCount">0</span>)</span>
           <svg class="icon icon-sm chev" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
-        <div class="boundary-list" id="boundaryList"></div>
+        <div class="section-body collapsed" id="boundaryList"></div>
       </div>
-      <div id="formSection"></div>
-      <div id="listSection"></div>
+      <div id="detailSection">
+        <div class="section-header collapsed" id="detailHeader" onclick="toggleSection('detail')">
+          <span>Detail Rumah<span class="dirty-badge" id="dirtyBadge" style="display:none;"><span class="dot-pending"></span>Belum disimpan</span></span>
+          <svg class="icon icon-sm chev" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="section-body collapsed" id="formSection"></div>
+      </div>
+      <div id="rumahSection">
+        <div class="section-header collapsed" id="rumahHeader" onclick="toggleSection('rumah')">
+          <span>Daftar Rumah (<span id="rumahCount">0</span>)</span>
+          <svg class="icon icon-sm chev" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="section-body collapsed" id="listSection"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -558,6 +744,10 @@ let map, streetLayer, satLayer, currentLayer;
 let houses = [], selectedId = null;
 let gpsActive = false, gpsWatchId = null, gpsMarker = null, gpsAccCircle = null;
 let boundaryLayerGroup, boundaries = [], editingBoundary = false, editingBoundaryItem = null, drawControl = null, maskLayer = null;
+let currentFilter = 'all';
+let isDirty = false;
+let pendingQueue = [];
+const QUEUE_KEY = 'sensus_pending_queue';
 
 // ===== SUPABASE INIT =====
 (function() {
@@ -810,6 +1000,267 @@ function hideLoading(){
   try{document.getElementById('globalLoading').style.display='none';document.getElementById('globalLoading').setAttribute('aria-hidden','true');}catch(e){}
 }
 
+// ===== TOAST (with dedup) =====
+let toastCounts={};
+function showToast(msg,type='info',duration=3500){
+  const c=document.getElementById('toastContainer');
+  if(!c) return;
+  // Dedup: if an identical message toast is already showing, bump a counter instead of stacking
+  const key=type+'|'+msg;
+  if(toastCounts[key]){
+    toastCounts[key].count++;
+    const badge=toastCounts[key].el.querySelector('.toast-count');
+    if(badge) badge.textContent=' (x'+toastCounts[key].count+')';
+    return;
+  }
+  const t=document.createElement('div');
+  t.className='toast '+(type==='error'?'err':type==='success'?'ok':type==='warn'?'warn':'');
+  let icon='';
+  if(type==='error') icon=ICON_ERROR;
+  else if(type==='success') icon=ICON_SUCCESS;
+  else if(type==='warn') icon=ICON_WARNING;
+  t.innerHTML=icon+'<span>'+esc(msg)+'</span><span class="toast-count"></span>';
+  c.appendChild(t);
+  toastCounts[key]={el:t,count:1};
+  // limit stack to 4 toasts
+  while(c.children.length>4) c.removeChild(c.firstChild);
+  setTimeout(()=>{
+    t.style.opacity='0';t.style.transition='opacity .3s';
+    setTimeout(()=>{t.remove();delete toastCounts[key];},300);
+  },duration);
+}
+
+// ===== OFFLINE / PENDING QUEUE =====
+function loadQueue(){
+  try{ pendingQueue = JSON.parse(localStorage.getItem(QUEUE_KEY)||'[]'); }
+  catch(e){ pendingQueue = []; }
+  updatePendingUI();
+  applyUnsyncedMarks();
+}
+function persistQueue(){
+  try{ localStorage.setItem(QUEUE_KEY, JSON.stringify(pendingQueue)); }catch(e){}
+  updatePendingUI();
+  applyUnsyncedMarks();
+}
+function updatePendingUI(){
+  const el=document.getElementById('pendingCount');
+  if(el) el.textContent=pendingQueue.length;
+}
+// Mark houses that have a pending operation in the queue (visual "unsynced" indicator)
+function applyUnsyncedMarks(){
+  const pendingIds=new Set(pendingQueue.filter(o=>o.table==='houses').map(o=>String(o.id)));
+  houses.forEach(h=>{
+    const unsynced=pendingIds.has(String(h.id));
+    if(h._unsynced===unsynced) return;
+    h._unsynced=unsynced;
+    if(h.marker){
+      h.marker.setIcon(makeIcon(h.status,unsynced));
+    }
+  });
+  renderList();
+}
+// Coalesce: for the same table+id+type=update, merge values into the existing queued op
+// instead of stacking duplicates (fixes ordering/race issues for repeated edits to one house)
+function queueOperation(op){
+  if(op.type==='update'){
+    const existing=pendingQueue.find(o=>o.table===op.table && o.id===op.id && o.type==='update');
+    if(existing){
+      existing.values={...existing.values,...op.values};
+      existing.ts=Date.now();
+      persistQueue();
+      return;
+    }
+  }
+  if(op.type==='delete'){
+    // remove any prior insert/update for this id - delete supersedes them
+    pendingQueue=pendingQueue.filter(o=>!(o.table===op.table && o.id===op.id && o.type!=='insert'));
+    // if there's a queued insert for this temp id, just drop everything (never existed on server)
+    const pendingInsert=pendingQueue.find(o=>o.table===op.table && o.id===op.id && o.type==='insert');
+    if(pendingInsert){
+      pendingQueue=pendingQueue.filter(o=>o!==pendingInsert && !(o.table===op.table && o.id===op.id));
+      persistQueue();
+      return;
+    }
+  }
+  pendingQueue.push({...op, ts:Date.now()});
+  persistQueue();
+}
+function setOnlineStatus(){
+  const offline=!navigator.onLine;
+  document.body.classList.toggle('is-offline', offline);
+  if(!offline) flushQueue();
+}
+let flushInFlight=false;
+async function flushQueue(){
+  if(!sb || pendingQueue.length===0 || flushInFlight) return;
+  if(!navigator.onLine) return;
+  flushInFlight=true;
+  const queue=[...pendingQueue];
+  pendingQueue=[];
+  persistQueue();
+  let okCount=0, failCount=0;
+  for(const op of queue){
+    try{
+      if(op.type==='insert'){
+        const {data,error}=await sb.from(op.table).insert(op.values).select().single();
+        if(error) throw error;
+        // ===== ID REMAPPING =====
+        // Local temp id (e.g. "tmp_173...") must be replaced everywhere with the real server id
+        if(op.table==='houses' && typeof op.id==='string' && op.id.startsWith('tmp_')){
+          remapHouseId(op.id, data.id);
+          // re-point any other queued ops that still reference the temp id
+          pendingQueue.forEach(o=>{ if(o.table==='houses' && o.id===op.id) o.id=data.id; });
+        }
+        if(op.table==='boundaries' && typeof op.id==='string' && op.id.startsWith('tmp_')){
+          remapBoundaryId(op.id, data);
+          pendingQueue.forEach(o=>{ if(o.table==='boundaries' && o.id===op.id) o.id=data.id; });
+        }
+        okCount++;
+      } else if(op.type==='update'){
+        const {error}=await sb.from(op.table).update(op.values).eq('id',op.id);
+        if(error) throw error;
+        okCount++;
+      } else if(op.type==='delete'){
+        const {error}=await sb.from(op.table).delete().eq('id',op.id);
+        if(error) throw error;
+        okCount++;
+      }
+    }catch(e){
+      failCount++;
+      pendingQueue.push(op);
+    }
+  }
+  persistQueue();
+  flushInFlight=false;
+  if(okCount>0) showToast(okCount+' perubahan berhasil disinkron.','success');
+  if(failCount>0) showToast(failCount+' perubahan gagal disinkron, akan dicoba lagi.','warn');
+}
+// Replace a temporary local house id with the real id returned by the server
+function remapHouseId(tempId, realId){
+  const h=houses.find(x=>String(x.id)===String(tempId));
+  if(!h) return;
+  h.id=realId;
+  h._unsynced=false;
+  if(h.marker){
+    h.marker.off('click');
+    h.marker.on('click',()=>selectHouse(h.id));
+    h.marker.bindPopup(popupContent(h));
+    h.marker.setIcon(makeIcon(h.status,false));
+  }
+  if(selectedId===tempId) selectedId=realId;
+}
+function remapBoundaryId(tempId, data){
+  const b=boundaries.find(x=>String(x.id)===String(tempId));
+  if(!b) return;
+  Object.assign(b,data,{layer:b.layer});
+}
+window.addEventListener('online',setOnlineStatus);
+window.addEventListener('offline',setOnlineStatus);
+// Retry periodically (online/offline events are unreliable on mobile)
+setInterval(()=>{ if(navigator.onLine) flushQueue(); }, 30000);
+
+// Wrapper: run a supabase op, queue on failure/offline
+async function dbOp(table,type,id,values){
+  if(!navigator.onLine || !sb){
+    queueOperation({table,type,id,values});
+    showToast('Tersimpan secara lokal (offline). Akan disinkron otomatis.','warn');
+    return {error:null,queued:true};
+  }
+  try{
+    let res;
+    if(type==='update') res=await sb.from(table).update(values).eq('id',id);
+    else if(type==='delete') res=await sb.from(table).delete().eq('id',id);
+    else if(type==='insert') res=await sb.from(table).insert(values).select().single();
+    if(res.error){
+      queueOperation({table,type,id,values});
+      showToast('Gagal terhubung ke server. Disimpan untuk sinkron nanti.','warn');
+      return {error:null,queued:true,data:res.data};
+    }
+    return res;
+  }catch(e){
+    queueOperation({table,type,id,values});
+    showToast('Koneksi bermasalah. Disimpan untuk sinkron nanti.','warn');
+    return {error:null,queued:true};
+  }
+}
+
+// ===== DIRTY STATE =====
+function setDirty(dirty){
+  isDirty=dirty;
+  const badge=document.getElementById('dirtyBadge');
+  if(badge) badge.style.display=dirty?'inline-flex':'none';
+}
+window.addEventListener('beforeunload',(e)=>{
+  if(isDirty){ e.preventDefault(); e.returnValue=''; }
+});
+
+// ===== HINT DISMISS =====
+function dismissHint(){
+  const h=document.getElementById('mapHint');
+  if(h) h.style.display='none';
+  try{ localStorage.setItem('sensus_hint_dismissed','1'); }catch(e){}
+}
+
+// ===== FILTER / SORT =====
+function setFilter(f){
+  currentFilter=f;
+  document.getElementById('fltAll').classList.toggle('active',f==='all');
+  document.getElementById('fltTodo').classList.toggle('active',f==='todo');
+  document.getElementById('fltDone').classList.toggle('active',f==='done');
+  renderList(document.getElementById('searchBox')?.value||'');
+}
+
+// ===== CSV / EXPORT =====
+function csvEscape(v){
+  v=String(v??'');
+  if(/[",\n]/.test(v)) return '"'+v.replace(/"/g,'""')+'"';
+  return v;
+}
+function downloadBlob(content,filename,mime){
+  const blob=new Blob([content],{type:mime});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=filename;
+  document.body.appendChild(a);a.click();
+  document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function exportCSV(){
+  if(houses.length===0){ showToast('Belum ada data rumah untuk diekspor.','warn'); return; }
+  const header=['No Urut Bangunan','Nama KK','Jumlah Anggota','Status','Catatan','Petugas','Latitude','Longitude'];
+  const rows=houses.map(h=>[
+    h.no, h.kk, h.jumlah, h.status==='done'?'Sudah disensus':'Belum disensus',
+    h.catatan, h.petugas_code, h.lat, h.lng
+  ]);
+  const csv=[header,...rows].map(r=>r.map(csvEscape).join(',')).join('\n');
+  const tgl=new Date().toISOString().slice(0,10);
+  downloadBlob('\uFEFF'+csv, `sensus-rumah-${tgl}.csv`, 'text/csv;charset=utf-8;');
+  showToast('CSV berhasil diunduh.','success');
+}
+function exportSummary(){
+  const total=houses.length;
+  const done=houses.filter(h=>h.status==='done').length;
+  const todo=total-done;
+  const pct=total>0?Math.round(done/total*100):0;
+  const tgl=new Date().toLocaleString('id-ID');
+  let txt = `REKAP SENSUS\n`;
+  txt += `Petugas : ${currentPetugas?.name||'-'} (${currentPetugas?.code||'-'})\n`;
+  txt += `Tanggal : ${tgl}\n`;
+  txt += `========================================\n`;
+  txt += `Total rumah       : ${total}\n`;
+  txt += `Sudah disensus    : ${done}\n`;
+  txt += `Belum disensus    : ${todo}\n`;
+  txt += `Persentase selesai: ${pct}%\n`;
+  txt += `========================================\n\n`;
+  txt += `DAFTAR BELUM DISENSUS:\n`;
+  const todoList=houses.filter(h=>h.status==='todo');
+  if(todoList.length===0) txt += `(tidak ada)\n`;
+  else todoList.forEach(h=>{ txt += `- ${h.no||'(tanpa no)'} | ${h.kk||'(tanpa nama)'}\n`; });
+  const fname=`rekap-sensus-${new Date().toISOString().slice(0,10)}.txt`;
+  downloadBlob(txt, fname, 'text/plain;charset=utf-8;');
+  showToast('Rekap berhasil diunduh.','success');
+}
+
 // Listener perubahan session (termasuk setelah reset password)
 if(sb && sb.auth){
   sb.auth.onAuthStateChange((event, session) => {
@@ -835,7 +1286,7 @@ function initApp(){
   try {
     if(typeof L === 'undefined'){
       console.error('❌ Leaflet library tidak terload!');
-      alert('Error: Peta library tidak tersedia. Coba refresh halaman.');
+      showToast('Peta library tidak tersedia. Coba refresh halaman.','error');
       return;
     }
     const mapElement = document.getElementById('map');
@@ -853,32 +1304,56 @@ function initApp(){
     boundaryLayerGroup = L.featureGroup().addTo(map);
     map.locate({setView:true,maxZoom:18});
 
-    map.on('click', function(e){
-      if(editingBoundary || !sb) return;
-      showConfirm('Tambah Rumah Baru','Tambahkan penanda rumah baru di lokasi ini?',false, async()=>{
-        if(!sb){ alert('Koneksi database gagal.'); return; }
-        const { data, error } = await sb.from('houses').insert({
-          lat:e.latlng.lat, lng:e.latlng.lng,
-          no:'', kk:'', jumlah:'', catatan:'', status:'todo',
-          petugas_code: currentPetugas.code,
-          petugas_name: currentPetugas.name,
-          user_id: currentUser.id
-        }).select().single();
-        if(error){ alert('Gagal menyimpan: '+error.message); return; }
-        const house = addHouseToMap(data);
+    map.on('click', async function(e){
+      if(editingBoundary){
+        showToast('Selesaikan dulu pengeditan batas SLS sebelum menambah rumah.','warn');
+        return;
+      }
+      const lat=e.latlng.lat, lng=e.latlng.lng;
+      if(!navigator.onLine || !sb){
+        const tempId='tmp_'+Date.now();
+        const house=addHouseToMap({id:tempId,lat,lng,no:'',kk:'',jumlah:'',catatan:'',status:'todo',petugas_code:currentPetugas?.code,_unsynced:true});
         selectHouse(house.id);
         renderList(); updateStats();
-      });
+        const hintEl=document.getElementById('mapHint'); if(hintEl) hintEl.style.display='none';
+        queueOperation({table:'houses',type:'insert',id:tempId,values:{
+          lat,lng,no:'',kk:'',jumlah:'',catatan:'',status:'todo',
+          petugas_code:currentPetugas?.code, petugas_name:currentPetugas?.name, user_id:currentUser?.id
+        }});
+        showToast('Rumah ditambahkan (offline). Akan disinkron otomatis.','warn');
+        return;
+      }
+      const { data, error } = await sb.from('houses').insert({
+        lat, lng,
+        no:'', kk:'', jumlah:'', catatan:'', status:'todo',
+        petugas_code: currentPetugas.code,
+        petugas_name: currentPetugas.name,
+        user_id: currentUser.id
+      }).select().single();
+      if(error){ showToast('Gagal menyimpan rumah baru: '+(error.message||String(error)),'error'); return; }
+      const house = addHouseToMap(data);
+      selectHouse(house.id);
+      renderList(); updateStats();
+      const hintEl=document.getElementById('mapHint'); if(hintEl) hintEl.style.display='none';
+      showToast('Rumah baru ditambahkan.','success');
     });
 
     renderForm(); renderList(); updateStats();
     loadHouses(); loadBoundary();
+    loadQueue();
+    setOnlineStatus();
+
+    try{
+      if(localStorage.getItem('sensus_hint_dismissed')==='1'){
+        const h=document.getElementById('mapHint'); if(h) h.style.display='none';
+      }
+    }catch(e){}
     
     const searchBox = document.getElementById('searchBox');
-    if(searchBox) searchBox.addEventListener('input', e => renderList(e.target.value));
+    if(searchBox) searchBox.addEventListener('input', e => { renderList(e.target.value); if(e.target.value) toggleSection('rumah', true); });
   } catch(err) {
     console.error('❌ Error initializing app:', err);
-    alert('Error: Gagal menginisialisasi aplikasi. Detail: ' + err.message);
+    showToast('Gagal menginisialisasi aplikasi: ' + err.message,'error');
   }
 }
 
@@ -910,7 +1385,7 @@ function toggleGPS(){
     if(gpsAccCircle){map.removeLayer(gpsAccCircle);gpsAccCircle=null;}
     return;
   }
-  if(!navigator.geolocation){alert('Perangkat ini tidak mendukung GPS.');return;}
+  if(!navigator.geolocation){showToast('Perangkat ini tidak mendukung GPS.','error');return;}
   gpsActive=true;
   document.getElementById('gpsToggle').classList.add('active');
   document.getElementById('gpsLabel').textContent='Melacak...';
@@ -937,25 +1412,46 @@ function toggleGPS(){
   },{enableHighAccuracy:true,maximumAge:1000,timeout:10000});
 }
 
+// ===== DRAG HINT =====
+let dragHintEl=null;
+function showDragHint(){
+  if(dragHintEl) return;
+  dragHintEl=document.createElement('div');
+  dragHintEl.className='drag-hint';
+  dragHintEl.innerHTML='<svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l3 3 3-3M19 9l3 3-3 3M2 12h20M12 2v20"/></svg> Memindahkan posisi rumah...';
+  document.body.appendChild(dragHintEl);
+}
+function hideDragHint(){
+  if(dragHintEl){ dragHintEl.remove(); dragHintEl=null; }
+}
+
 // ===== HOUSES =====
-function makeIcon(status){
+function makeIcon(status,unsynced){
   const color=status==='done'?'#1a8a4a':'#E8520A';
   const svg=status==='done'
     ? '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
     : '<svg viewBox="0 0 24 24" width="3" height="13" fill="white"><rect x="0" y="0" width="3" height="9"/><rect x="0" y="11" width="3" height="3"/></svg>';
-  const html=`<div style="width:26px;height:26px;border-radius:50%;background:${color};border:3px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;">${svg}</div>`;
+  const badge=unsynced?'<div style="position:absolute;top:-3px;right:-3px;width:10px;height:10px;border-radius:50%;background:var(--bps-gold);border:2px solid white;"></div>':'';
+  const html=`<div style="position:relative;width:26px;height:26px;border-radius:50%;background:${color};border:3px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;">${svg}${badge}</div>`;
   return L.divIcon({html,className:'',iconSize:[26,26],iconAnchor:[13,13]});
 }
 
 function addHouseToMap(row){
-  const marker=L.marker([row.lat,row.lng],{icon:makeIcon(row.status),draggable:true}).addTo(map);
-  const house={id:row.id,lat:row.lat,lng:row.lng,marker,no:row.no||'',kk:row.kk||'',jumlah:row.jumlah||'',catatan:row.catatan||'',status:row.status||'todo',petugas_code:row.petugas_code||''};
+  const marker=L.marker([row.lat,row.lng],{icon:makeIcon(row.status,!!row._unsynced),draggable:true}).addTo(map);
+  const house={id:row.id,lat:row.lat,lng:row.lng,marker,no:row.no||'',kk:row.kk||'',jumlah:row.jumlah||'',catatan:row.catatan||'',status:row.status||'todo',petugas_code:row.petugas_code||'',_unsynced:!!row._unsynced};
   marker.bindPopup(popupContent(house));
   marker.on('click',()=>selectHouse(house.id));
+  marker.on('dragstart',()=>{
+    showDragHint();
+  });
   marker.on('dragend',async(ev)=>{
+    hideDragHint();
     house.lat=ev.target.getLatLng().lat;
     house.lng=ev.target.getLatLng().lng;
-    if(sb) await sb.from('houses').update({lat:house.lat,lng:house.lng}).eq('id',house.id);
+    const {error}=await dbOp('houses','update',house.id,{lat:house.lat,lng:house.lng});
+    if(error) showToast('Gagal menyimpan posisi: '+(error.message||String(error)),'error');
+    else showToast('Posisi rumah diperbarui.','success');
+    applyUnsyncedMarks();
   });
   houses.push(house);
   return house;
@@ -971,9 +1467,44 @@ async function loadHouses(){
   if(error){ console.warn('Gagal memuat data:', error); return; }
   if(data) data.forEach(addHouseToMap);
   renderList(); updateStats();
+  if(houses.length>0){
+    const h=document.getElementById('mapHint'); if(h) h.style.display='none';
+  }
 }
 
-function selectHouse(id){ selectedId=id; renderForm(); renderList(); }
+function togglePanel(){
+  const panel=document.getElementById('sidePanel');
+  const main=panel.closest('.main')||panel.parentElement;
+  const collapsed=panel.classList.toggle('panel-collapsed');
+  // Toggle helper class on .main so the toggle button can reposition via CSS
+  main.classList.toggle('panel-collapsed-active', collapsed);
+  if(map) setTimeout(()=>map.invalidateSize(),250);
+}
+
+function toggleSection(name, forceOpen){
+  const header=document.getElementById(name+'Header');
+  const bodyId = name==='boundary' ? 'boundaryList' : name==='detail' ? 'formSection' : 'listSection';
+  const body=document.getElementById(bodyId);
+  let collapsed;
+  if(forceOpen===true) collapsed=false;
+  else if(forceOpen===false) collapsed=true;
+  else collapsed=!header.classList.contains('collapsed');
+  header.classList.toggle('collapsed', collapsed);
+  body.classList.toggle('collapsed', collapsed);
+}
+
+function selectHouse(id){
+  if(isDirty && selectedId!==id){
+    showConfirm('Perubahan Belum Disimpan','Ada perubahan yang belum disimpan pada rumah ini. Tinggalkan tanpa menyimpan?',true,()=>{
+      setDirty(false);
+      selectedId=id; renderForm(); renderList();
+      if(id) toggleSection('detail', true);
+    });
+    return;
+  }
+  selectedId=id; renderForm(); renderList();
+  if(id) toggleSection('detail', true);
+}
 
 function renderForm(){
   const section=document.getElementById('formSection');
@@ -985,7 +1516,6 @@ function renderForm(){
   if(!h){selectedId=null;renderForm();return;}
   section.innerHTML=`
     <div class="panel-section">
-      <h2>Detail Rumah</h2>
       <label>Status Sensus</label>
       <div class="status-row">
         <button class="status-btn done ${h.status==='done'?'active':''}" onclick="setStatus(${h.id},'done')"><svg class="icon icon-sm" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Sudah</button>
@@ -996,7 +1526,7 @@ function renderForm(){
       <label>Nama Kepala Keluarga</label>
       <input id="f_kk" value="${esc(h.kk)}" placeholder="contoh: Budi Santoso">
       <label>Jumlah Anggota Keluarga</label>
-      <input id="f_jumlah" type="number" min="0" value="${esc(h.jumlah)}" placeholder="contoh: 4">
+      <input id="f_jumlah" type="number" min="0" max="50" value="${esc(h.jumlah)}" placeholder="contoh: 4">
       <label>Catatan</label>
       <textarea id="f_catatan" placeholder="catatan tambahan...">${esc(h.catatan)}</textarea>
       <div class="actions">
@@ -1004,35 +1534,106 @@ function renderForm(){
         <button class="danger" onclick="deleteHouse(${h.id})">Hapus</button>
       </div>
     </div>`;
+  setDirty(false);
+  ['f_no','f_kk','f_jumlah','f_catatan'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el) return;
+    el.addEventListener('input',()=>{
+      setDirty(true);
+      el.style.borderColor='';
+      if(id==='f_jumlah') validateJumlahField(el);
+    });
+  });
+}
+
+function validateJumlahField(el){
+  const v=el.value;
+  if(v===''){ return; }
+  const n=Number(v);
+  if(!Number.isInteger(n) || n<0 || n>50){
+    el.style.borderColor='var(--red)';
+  } else {
+    el.style.borderColor='';
+  }
 }
 
 function setStatus(id,status){
   const h=houses.find(x=>x.id===id);
   if(h.status===status) return;
-  const label=status==='done'?'Sudah disensus':'Belum disensus';
-  showConfirm('Ubah Status',`Ubah status menjadi "${label}"?`,false,async()=>{
-    h.status=status;
-    h.marker.setIcon(makeIcon(status));
-    h.marker.bindPopup(popupContent(h));
-    renderForm();renderList();updateStats();
-    const {error}=await sb.from('houses').update({status}).eq('id',id);
-    if(error) alert('Gagal: '+error.message);
+  h.status=status;
+  h.marker.setIcon(makeIcon(status,h._unsynced));
+  h.marker.bindPopup(popupContent(h));
+  renderForm();renderList();updateStats();
+  dbOp('houses','update',id,{status}).then(({error})=>{
+    if(error) showToast('Gagal menyimpan status: '+(error.message||String(error)),'error');
+    applyUnsyncedMarks();
   });
 }
 
 function saveHouse(id){
-  showConfirm('Simpan Data','Simpan perubahan data rumah ini?',false,async()=>{
-    const h=houses.find(x=>x.id===id);
-    h.no=document.getElementById('f_no').value;
-    h.kk=document.getElementById('f_kk').value;
-    h.jumlah=document.getElementById('f_jumlah').value;
-    h.catatan=document.getElementById('f_catatan').value;
-    h.marker.bindPopup(popupContent(h));
-    renderList();
-    const btn=document.getElementById('btnSimpan');
-    const {error}=await sb.from('houses').update({no:h.no,kk:h.kk,jumlah:h.jumlah,catatan:h.catatan}).eq('id',id);
-    if(error){alert('Gagal: '+error.message);}
-    else if(btn){const old=btn.textContent;btn.innerHTML='Tersimpan <svg class="icon icon-sm" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>';setTimeout(()=>{btn.textContent=old;},1200);}
+  const h=houses.find(x=>x.id===id);
+  if(!h) return;
+  const no=document.getElementById('f_no').value.trim();
+  const kk=document.getElementById('f_kk').value.trim();
+  const jumlahRaw=document.getElementById('f_jumlah').value;
+  const catatan=document.getElementById('f_catatan').value.trim();
+
+  // ===== VALIDATION =====
+  const errs=[];
+  if(!no) errs.push('Nomor urut bangunan wajib diisi.');
+  if(!kk) errs.push('Nama Kepala Keluarga wajib diisi.');
+  let jumlah=jumlahRaw;
+  if(jumlahRaw===''){
+    errs.push('Jumlah anggota keluarga wajib diisi.');
+  } else {
+    const n=Number(jumlahRaw);
+    if(!Number.isInteger(n) || n<0 || n>50){
+      errs.push('Jumlah anggota keluarga harus berupa angka bulat antara 0-50.');
+    } else {
+      jumlah=n;
+    }
+  }
+  if(errs.length>0){
+    showToast(errs[0],'error');
+    const jBad=jumlahRaw===''||!Number.isInteger(Number(jumlahRaw))||Number(jumlahRaw)<0||Number(jumlahRaw)>50;
+    markFieldErrors({no:!no,kk:!kk,jumlah:jBad});
+    return;
+  }
+  clearFieldErrors();
+
+  h.no=no; h.kk=kk; h.jumlah=jumlah; h.catatan=catatan;
+  h.marker.bindPopup(popupContent(h));
+  renderList();
+  setDirty(false);
+
+  const btn=document.getElementById('btnSimpan');
+  if(btn){ btn.disabled=true; btn.innerHTML='<span class="spinner" style="border-top-color:var(--bps-orange-deep);border-color:rgba(0,0,0,0.15);"></span>Menyimpan...'; }
+
+  dbOp('houses','update',id,{no:h.no,kk:h.kk,jumlah:h.jumlah,catatan:h.catatan}).then(({error})=>{
+    if(btn) btn.disabled=false;
+    if(error){
+      showToast('Gagal menyimpan: '+(error.message||String(error)),'error');
+      setDirty(true);
+      if(btn) btn.textContent='Simpan';
+    } else if(btn){
+      btn.innerHTML='Tersimpan <svg class="icon icon-sm" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>';
+      setTimeout(()=>{ if(btn) btn.textContent='Simpan'; },1200);
+    }
+    applyUnsyncedMarks();
+  });
+}
+
+function markFieldErrors(map){
+  ['no','kk','jumlah'].forEach(k=>{
+    const el=document.getElementById('f_'+k);
+    if(!el) return;
+    el.style.borderColor = map[k] ? 'var(--red)' : '';
+  });
+}
+function clearFieldErrors(){
+  ['no','kk','jumlah'].forEach(k=>{
+    const el=document.getElementById('f_'+k);
+    if(el) el.style.borderColor='';
   });
 }
 
@@ -1043,9 +1644,11 @@ function deleteHouse(id){
     map.removeLayer(h.marker);
     houses=houses.filter(x=>x.id!==id);
     selectedId=null;
+    setDirty(false);
     renderForm();renderList();updateStats();
-    const {error}=await sb.from('houses').delete().eq('id',id);
-    if(error) alert('Gagal menghapus: '+error.message);
+    const {error}=await dbOp('houses','delete',id,{});
+    if(error) showToast('Gagal menghapus: '+(error.message||String(error)),'error');
+    else showToast('Rumah dihapus.','success');
   });
 }
 
@@ -1053,15 +1656,37 @@ function popupContent(h){
   return `<b>${esc(h.no||'Tanpa nomor')}</b><br>${esc(h.kk||'-')}<br>Anggota: ${esc(h.jumlah||'-')}<br>Status: ${h.status==='done'?'<svg class="icon icon-sm" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Sudah':'<svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Belum'}`;
 }
 
-function renderList(filter=''){
+function renderList(filter){
   const section=document.getElementById('listSection');
+  const countEl=document.getElementById('rumahCount');
+  if(filter===undefined){
+    filter=document.getElementById('searchBox')?.value||'';
+  }
+  if(countEl) countEl.textContent = houses.length;
   let list=houses;
+  if(currentFilter!=='all'){
+    list=list.filter(h=>h.status===currentFilter);
+  }
   if(filter){
     const f=filter.toLowerCase();
-    list=houses.filter(h=>(h.no||'').toLowerCase().includes(f)||(h.kk||'').toLowerCase().includes(f));
+    list=list.filter(h=>(h.no||'').toLowerCase().includes(f)||(h.kk||'').toLowerCase().includes(f));
+  }
+  const sortBy=document.getElementById('sortSelect')?.value||'default';
+  if(sortBy==='no'){
+    list=[...list].sort((a,b)=>(a.no||'').localeCompare(b.no||'',undefined,{numeric:true}));
+  } else if(sortBy==='kk'){
+    list=[...list].sort((a,b)=>(a.kk||'').localeCompare(b.kk||''));
+  } else if(sortBy==='status'){
+    list=[...list].sort((a,b)=>(a.status>b.status?1:a.status<b.status?-1:0));
   }
   if(list.length===0){
-    section.innerHTML=`<div class="empty-note">${houses.length===0?'Belum ada rumah yang ditandai.':'Tidak ada hasil pencarian.'}</div>`;
+    let msg='Belum ada rumah yang ditandai.';
+    if(houses.length>0){
+      if(currentFilter==='todo') msg='Tidak ada rumah yang belum disensus.';
+      else if(currentFilter==='done') msg='Tidak ada rumah yang sudah disensus.';
+      else msg='Tidak ada hasil pencarian.';
+    }
+    section.innerHTML=`<div class="empty-note">${msg}</div>`;
     return;
   }
   section.innerHTML=list.map(h=>`
@@ -1116,15 +1741,6 @@ async function loadBoundary(){
   }
 }
 
-let boundaryCollapsed = false;
-function toggleBoundarySection(){
-  boundaryCollapsed = !boundaryCollapsed;
-  const header=document.getElementById('boundaryHeader');
-  const list=document.getElementById('boundaryList');
-  header.classList.toggle('collapsed', boundaryCollapsed);
-  list.classList.toggle('collapsed', boundaryCollapsed);
-}
-
 function renderBoundaryList(){
   const section=document.getElementById('boundaryList');
   document.getElementById('boundaryCount').textContent = boundaries.length;
@@ -1143,7 +1759,7 @@ function renderBoundaryList(){
 }
 
 function startNewBoundary(){
-  if(editingBoundary){alert('Selesaikan dulu pengeditan batas yang sedang berjalan.');return;}
+  if(editingBoundary){showToast('Selesaikan dulu pengeditan batas yang sedang berjalan.','warn');return;}
   editingBoundary=true;
   document.getElementById('boundaryToggle').classList.add('editing');
   document.getElementById('boundaryLabel').textContent='Klik peta utk gambar...';
@@ -1184,19 +1800,19 @@ async function saveNewBoundary(latlngs,layer){
     }).select().single()); }
     catch(e){ error = e; }
     hideLoading();
-    if(error){alert('Gagal menyimpan batas: '+(error.message||String(error)));boundaryLayerGroup.removeLayer(layer);return;}
+    if(error){showToast('Gagal menyimpan batas: '+(error.message||String(error)),'error');boundaryLayerGroup.removeLayer(layer);return;}
     data.layer=layer;
     layer.bindTooltip(data.name,{sticky:true});
     boundaries.push(data);
-    refreshMask();renderBoundaryList();
+    refreshMask();renderBoundaryList();toggleSection('boundary', true);
   },()=>{boundaryLayerGroup.removeLayer(layer);refreshMask();});
 }
 
 function toggleEditBoundary(id){
   const b=boundaries.find(x=>x.id===id);
   if(editingBoundaryItem&&editingBoundaryItem.id===id){finishEditBoundary();return;}
-  if(editingBoundaryItem){alert('Selesaikan dulu pengeditan batas lain.');return;}
-  if(b.locked){alert('Batas ini terkunci. Buka kunci dulu.');return;}
+  if(editingBoundaryItem){showToast('Selesaikan dulu pengeditan batas lain.','warn');return;}
+  if(b.locked){showToast('Batas ini terkunci. Buka kunci dulu.','warn');return;}
   editingBoundaryItem=b;
   b.layer.editing.enable();
   renderBoundaryList();
@@ -1207,8 +1823,8 @@ async function finishEditBoundary(){
   b.layer.editing.disable();
   const latlngs=b.layer.getLatLngs()[0].map(p=>[p.lat,p.lng]);
   const geojson=JSON.stringify(latlngs);
-  const {error}=await sb.from('boundaries').update({geojson}).eq('id',b.id);
-  if(error) alert('Gagal menyimpan: '+error.message);
+  const {error}=await dbOp('boundaries','update',b.id,{geojson});
+  if(error) showToast('Gagal menyimpan: '+error.message,'error');
   else b.geojson=geojson;
   editingBoundaryItem=null;
   refreshMask();renderBoundaryList();
@@ -1217,8 +1833,8 @@ async function finishEditBoundary(){
 async function toggleLockBoundary(id){
   const b=boundaries.find(x=>x.id===id);
   const newLocked=!b.locked;
-  const {error}=await sb.from('boundaries').update({locked:newLocked}).eq('id',id);
-  if(error){alert('Gagal: '+error.message);return;}
+  const {error}=await dbOp('boundaries','update',id,{locked:newLocked});
+  if(error){showToast('Gagal: '+error.message,'error');return;}
   b.locked=newLocked;
   b.layer.setStyle(newLocked?lockedStyle:editStyle);
   if(newLocked&&editingBoundaryItem&&editingBoundaryItem.id===id){b.layer.editing.disable();editingBoundaryItem=null;}
@@ -1233,8 +1849,8 @@ function deleteBoundaryItem(id){
     boundaries=boundaries.filter(x=>x.id!==id);
     if(editingBoundaryItem&&editingBoundaryItem.id===id) editingBoundaryItem=null;
     refreshMask();renderBoundaryList();
-    const {error}=await sb.from('boundaries').delete().eq('id',id);
-    if(error) alert('Gagal menghapus: '+error.message);
+    const {error}=await dbOp('boundaries','delete',id,{});
+    if(error) showToast('Gagal menghapus: '+error.message,'error');
   });
 }
 
@@ -1242,8 +1858,8 @@ async function renameBoundary(id,name){
   const b=boundaries.find(x=>x.id===id);
   b.name=name;
   b.layer.bindTooltip(name||'SLS',{sticky:true});
-  const {error}=await sb.from('boundaries').update({name}).eq('id',id);
-  if(error) alert('Gagal menyimpan nama: '+error.message);
+  const {error}=await dbOp('boundaries','update',id,{name});
+  if(error) showToast('Gagal menyimpan nama: '+error.message,'error');
 }
 
 // ===== UTILITIES =====
