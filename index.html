@@ -1084,12 +1084,14 @@ function updatePendingUI(){
 // Mark houses that have a pending operation in the queue (visual "unsynced" indicator)
 function applyUnsyncedMarks(){
   const pendingIds=new Set(pendingQueue.filter(o=>o.table==='houses').map(o=>String(o.id)));
-  houses.forEach(h=>{
+  houses.forEach((h,i)=>{
     const unsynced=pendingIds.has(String(h.id));
-    if(h._unsynced===unsynced) return;
+    if(h._unsynced===unsynced && h._lastIconNo===h.no && h._lastIconKK===i+1) return;
     h._unsynced=unsynced;
+    h._lastIconNo=h.no;
+    h._lastIconKK=i+1;
     if(h.marker){
-      h.marker.setIcon(makeIcon(h.status,unsynced));
+      h.marker.setIcon(makeIcon(h.status,unsynced,i+1,h.no));
     }
   });
   renderList();
@@ -1176,11 +1178,12 @@ function remapHouseId(tempId, realId){
   if(!h) return;
   h.id=realId;
   h._unsynced=false;
+  const kkIdx = houses.findIndex(x=>x.id===realId)+1;
   if(h.marker){
     h.marker.off('click');
     h.marker.on('click',()=>selectHouse(h.id));
     h.marker.bindPopup(popupContent(h));
-    h.marker.setIcon(makeIcon(h.status,false));
+    h.marker.setIcon(makeIcon(h.status,false,kkIdx,h.no));
   }
   if(selectedId===tempId) selectedId=realId;
 }
@@ -1475,18 +1478,43 @@ function hideDragHint(){
 }
 
 // ===== HOUSES =====
-function makeIcon(status,unsynced){
-  const color=status==='done'?'#1a8a4a':'#E8520A';
-  const svg=status==='done'
-    ? '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
-    : '<svg viewBox="0 0 24 24" width="3" height="13" fill="white"><rect x="0" y="0" width="3" height="9"/><rect x="0" y="11" width="3" height="3"/></svg>';
-  const badge=unsynced?'<div style="position:absolute;top:-3px;right:-3px;width:10px;height:10px;border-radius:50%;background:var(--bps-gold);border:2px solid white;"></div>':'';
-  const html=`<div style="position:relative;width:26px;height:26px;border-radius:50%;background:${color};border:3px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;">${svg}${badge}</div>`;
-  return L.divIcon({html,className:'',iconSize:[26,26],iconAnchor:[13,13]});
+// Hitung nomor KK (urutan di array houses) dan nomor Bangunan (field h.no) untuk label marker
+function getKKIndex(houseId){
+  // Nomor KK = urutan kehadiran di array (1-based)
+  const idx = houses.findIndex(x=>x.id===houseId);
+  return idx >= 0 ? idx+1 : '?';
+}
+
+function makeIcon(status, unsynced, kkLabel, bLabel){
+  const color = status==='done' ? '#1a8a4a' : '#E8520A';
+  const borderColor = status==='done' ? '#0f5c30' : '#C43F00';
+  const badge = unsynced
+    ? '<div style="position:absolute;top:-4px;right:-4px;width:10px;height:10px;border-radius:50%;background:var(--bps-gold);border:2px solid white;z-index:1;"></div>'
+    : '';
+
+  // Label baris atas: KKn  baris bawah: Bn (jika ada no bangunan)
+  const kkStr  = kkLabel  ? 'KK'+kkLabel  : 'KK?';
+  const bStr   = bLabel   ? 'B'+bLabel    : '';
+  const labelLine = bStr
+    ? `<div style="font-size:8px;font-weight:800;line-height:1.15;text-align:center;color:white;text-shadow:0 1px 2px rgba(0,0,0,0.5);">${kkStr}<br>${bStr}</div>`
+    : `<div style="font-size:8px;font-weight:800;line-height:1.15;text-align:center;color:white;text-shadow:0 1px 2px rgba(0,0,0,0.5);">${kkStr}</div>`;
+
+  const html = `<div style="position:relative;min-width:34px;height:34px;border-radius:10px;background:${color};border:2.5px solid white;outline:1.5px solid ${borderColor};box-shadow:0 2px 6px rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;padding:2px 4px;">${labelLine}${badge}</div>`;
+  return L.divIcon({html, className:'', iconSize:[34,34], iconAnchor:[17,17]});
+}
+
+// Refresh icon semua marker (dipanggil setelah array houses berubah urutan)
+function refreshAllIcons(){
+  houses.forEach((h,i)=>{
+    if(h.marker){
+      h.marker.setIcon(makeIcon(h.status, h._unsynced, i+1, h.no));
+    }
+  });
 }
 
 function addHouseToMap(row){
-  const marker=L.marker([row.lat,row.lng],{icon:makeIcon(row.status,!!row._unsynced),draggable:true}).addTo(map);
+  const kkIdx = houses.length + 1; // akan jadi index setelah push
+  const marker=L.marker([row.lat,row.lng],{icon:makeIcon(row.status,!!row._unsynced, kkIdx, row.no||''),draggable:true}).addTo(map);
   const house={id:row.id,lat:row.lat,lng:row.lng,marker,no:row.no||'',kk:row.kk||'',jumlah:row.jumlah||'',catatan:row.catatan||'',status:row.status||'todo',petugas_code:row.petugas_code||'',_unsynced:!!row._unsynced,hp:row.hp||'',jenis_bangunan:row.jenis_bangunan||'',sls_name:row.sls_name||''};
   marker.bindPopup(popupContent(house));
   marker.on('click',()=>selectHouse(house.id));
@@ -1517,6 +1545,7 @@ async function loadHouses(){
   hideLoading();
   if(error){ console.warn('Gagal memuat data:', error); return; }
   if(data) data.forEach(addHouseToMap);
+  refreshAllIcons(); // sinkronkan label KK setelah semua data dimuat
   renderList(); updateStats();
   if(houses.length>0){
     const h=document.getElementById('mapHint'); if(h) h.style.display='none';
@@ -1647,7 +1676,8 @@ function setStatus(id,status){
   const h=houses.find(x=>x.id===id);
   if(h.status===status) return;
   h.status=status;
-  h.marker.setIcon(makeIcon(status,h._unsynced));
+  const kkIdx = houses.findIndex(x=>x.id===id)+1;
+  h.marker.setIcon(makeIcon(status,h._unsynced,kkIdx,h.no));
   h.marker.bindPopup(popupContent(h));
   renderForm();renderList();updateStats();
   dbOp('houses','update',id,{status}).then(({error})=>{
@@ -1690,6 +1720,9 @@ function saveHouse(id){
   clearFieldErrors();
 
   h.no=no; h.kk=kk; h.jumlah=jumlah; h.catatan=catatan; h.hp=hp; h.jenis_bangunan=jenis_bangunan;
+  // Refresh ikon marker dengan nomor KK dan nomor Bangunan terbaru
+  const kkIdx = houses.findIndex(x=>x.id===id)+1;
+  h.marker.setIcon(makeIcon(h.status, h._unsynced, kkIdx, h.no));
   h.marker.bindPopup(popupContent(h));
   renderList();
   setDirty(false);
@@ -1733,6 +1766,7 @@ function deleteHouse(id){
     houses=houses.filter(x=>x.id!==id);
     selectedId=null;
     setDirty(false);
+    refreshAllIcons(); // renomor KK setelah hapus
     renderForm();renderList();updateStats();
     const {error}=await dbOp('houses','delete',id,{});
     if(error) showToast('Gagal menghapus: '+(error.message||String(error)),'error');
@@ -1741,9 +1775,13 @@ function deleteHouse(id){
 }
 
 function popupContent(h){
-  const slsTag = h.sls_name ? `<br>SLS: <b>${esc(h.sls_name)}</b>` : '';
-  const jenisTag = h.jenis_bangunan ? `<br>Jenis: ${esc(h.jenis_bangunan)}` : '';
-  return `<b>${esc(h.no||'Tanpa nomor')}</b><br>${esc(h.kk||'-')}<br>Anggota: ${esc(h.jumlah||'-')}<br>Status: ${h.status==='done'?'<svg class="icon icon-sm" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Sudah':'<svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Belum'}${jenisTag}${slsTag}`;
+  const kkIdx = houses.findIndex(x=>x.id===h.id)+1;
+  const kkLabel = kkIdx > 0 ? `KK${kkIdx}` : 'KK?';
+  const bLabel  = h.no ? `B${h.no}` : '';
+  const badge   = bLabel ? `<b>${kkLabel}/${bLabel}</b>` : `<b>${kkLabel}</b>`;
+  const slsTag  = h.sls_name ? `<br>SLS: <b>${esc(h.sls_name)}</b>` : '';
+  const jenisTag= h.jenis_bangunan ? `<br>Jenis: ${esc(h.jenis_bangunan)}` : '';
+  return `${badge}<br>${esc(h.kk||'-')}<br>Anggota: ${esc(h.jumlah||'-')}<br>Status: ${h.status==='done'?'<svg class="icon icon-sm" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Sudah':'<svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Belum'}${jenisTag}${slsTag}`;
 }
 
 // Point-in-polygon (ray casting)
@@ -1803,14 +1841,19 @@ function renderList(filter){
     section.innerHTML=`<div class="empty-note">${msg}</div>`;
     return;
   }
-  section.innerHTML=list.map(h=>`
+  section.innerHTML=list.map((h,_i)=>{
+    const kkIdx = houses.findIndex(x=>x.id===h.id)+1;
+    const kkStr = `KK${kkIdx}`;
+    const bStr  = h.no ? `/B${h.no}` : '';
+    return `
     <div class="list-item" onclick="focusHouse(${h.id})">
       <div class="dot ${h.status}"></div>
       <div class="meta">
-        <div class="num">${esc(h.no||'Rumah #'+h.id)}</div>
+        <div class="num">${kkStr}${bStr}</div>
         <div class="name">${esc(h.kk||'Belum ada nama')}</div>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 function focusHouse(id){
