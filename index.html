@@ -387,12 +387,10 @@ button.danger:active{background:#fdf0ee;}
   -webkit-tap-highlight-color:transparent;
 }
 .list-item:active{background:var(--paper);}
-.dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
-.dot.done{background:var(--success);}
-.dot.todo{background:var(--bps-orange);}
+.dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;}
+.dot.done{box-shadow:0 0 0 2px var(--success);}
 .list-item .meta{flex:1;min-width:0;}
 .list-item .meta .num{font-weight:700;}
-.list-item .meta .name{color:#8a7a70;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 
 /* ===== CONFIRM / PROMPT MODAL ===== */
 .confirm-overlay,.prompt-overlay{
@@ -1100,15 +1098,14 @@ function updatePendingUI(){
 // Mark houses that have a pending operation in the queue (visual "unsynced" indicator)
 function applyUnsyncedMarks(){
   const pendingIds=new Set(pendingQueue.filter(o=>o.table==='houses').map(o=>String(o.id)));
-  houses.forEach((h,i)=>{
+  houses.forEach((h)=>{
     const unsynced=pendingIds.has(String(h.id));
-    const kkLabel = h.no_kk || String(i+1);
-    if(h._unsynced===unsynced && h._lastIconNo===h.no && h._lastIconKK===kkLabel) return;
+    if(h._unsynced===unsynced && h._lastIconNo===h.no && h._lastIconSLS===h.sls_name) return;
     h._unsynced=unsynced;
     h._lastIconNo=h.no;
-    h._lastIconKK=kkLabel;
+    h._lastIconSLS=h.sls_name;
     if(h.marker){
-      h.marker.setIcon(makeIcon(h.status,unsynced,kkLabel,h.no));
+      h.marker.setIcon(makeIcon(h.status,unsynced,h.sls_name,h.no));
     }
   });
   renderList();
@@ -1199,8 +1196,7 @@ function remapHouseId(tempId, realId){
     h.marker.off('click');
     h.marker.on('click',()=>selectHouse(h.id));
     h.marker.bindPopup(popupContent(h));
-    const kkLabel = h.no_kk || String(houses.findIndex(x=>x.id===realId)+1);
-    h.marker.setIcon(makeIcon(h.status,false,kkLabel,h.no));
+    h.marker.setIcon(makeIcon(h.status,false,h.sls_name,h.no));
   }
   if(selectedId===tempId) selectedId=realId;
 }
@@ -1504,32 +1500,41 @@ function getKKIndex(houseId){
   return idx >= 0 ? idx+1 : '?';
 }
 
-function makeIcon(status, unsynced, kkLabel, bLabel){
-  const color     = status==='done' ? '#1a8a4a' : '#E8520A';
-  const darkColor = status==='done' ? '#0d5c2a' : '#9e3200';
-  const badge = unsynced
+// ===== WARNA PER SLS =====
+// Setiap SLS (berdasarkan nama batas wilayah) mendapat warna berbeda secara konsisten,
+// dihitung dari hash nama SLS sehingga warnanya tetap sama walau batas ditambah/dihapus.
+const SLS_COLOR_PALETTE = ['#E8520A','#1A5AA8','#1a8a4a','#8e44ad','#c0392b','#00838f','#d81b60','#6a1b9a','#F5A623','#5d4037','#7cb342','#37474f'];
+const DEFAULT_SLS_COLOR = '#6b6b6b'; // titik yang belum berada di dalam batas SLS manapun
+function hashString(str){
+  let h=0;
+  for(let i=0;i<str.length;i++){ h=(h*31+str.charCodeAt(i))>>>0; }
+  return h;
+}
+function getSLSColor(slsName){
+  if(!slsName) return DEFAULT_SLS_COLOR;
+  return SLS_COLOR_PALETTE[hashString(slsName) % SLS_COLOR_PALETTE.length];
+}
+
+function makeIcon(status, unsynced, slsName, bLabel){
+  const color = getSLSColor(slsName);
+  const label = bLabel ? esc(String(bLabel)) : '?';
+  const w = Math.max(30, label.length * 9 + 18);
+  const unsyncedBadge = unsynced
     ? '<div style="position:absolute;top:-5px;right:-5px;width:11px;height:11px;border-radius:50%;background:#F5A623;border:2px solid white;z-index:2;box-shadow:0 1px 3px rgba(0,0,0,0.4);"></div>'
     : '';
-  const kkStr = kkLabel ? 'KK' + kkLabel : 'KK?';
-  const bStr  = bLabel  ? 'B'  + bLabel  : '';
-  const longestLen = Math.max(kkStr.length, bStr ? bStr.length : 0);
-  const w = Math.max(38, longestLen * 7 + 14);
-  const h = bStr ? 42 : 30;
-  const divider = bStr ? '<span style="display:block;height:1px;background:rgba(255,255,255,0.4);margin:1px 2px;"></span>' : '';
-  const inner = bStr
-    ? '<span style="display:block;font-size:10px;font-weight:900;letter-spacing:0.2px;line-height:1.3;">' + kkStr + '</span>' + divider + '<span style="display:block;font-size:10px;font-weight:900;letter-spacing:0.2px;line-height:1.3;">' + bStr + '</span>'
-    : '<span style="display:block;font-size:11px;font-weight:900;letter-spacing:0.2px;line-height:1;">' + kkStr + '</span>';
-  const html = '<div style="position:relative;width:' + w + 'px;height:' + h + 'px;background:' + color + ';border:2.5px solid white;box-shadow:0 0 0 1.5px ' + darkColor + ',0 3px 8px rgba(0,0,0,0.5);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:white;text-align:center;text-shadow:0 1px 2px rgba(0,0,0,0.6);font-family:Segoe UI,system-ui,sans-serif;padding:2px 4px;">' + inner + badge + '</div>';
-  return L.divIcon({html, className:'', iconSize:[w, h], iconAnchor:[Math.round(w/2), Math.round(h/2)]});
+  const doneBadge = status==='done'
+    ? '<div style="position:absolute;bottom:-5px;right:-5px;width:14px;height:14px;border-radius:50%;background:#1a8a4a;border:2px solid white;z-index:2;box-shadow:0 1px 3px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 24 24" style="width:8px;height:8px;fill:none;stroke:white;stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round;"><polyline points="20 6 9 17 4 12"/></svg></div>'
+    : '';
+  const inner = '<span style="display:block;font-size:12px;font-weight:900;letter-spacing:0.2px;line-height:1;">' + label + '</span>';
+  const html = '<div style="position:relative;width:' + w + 'px;height:30px;background:' + color + ';border:2.5px solid white;box-shadow:0 0 0 1.5px rgba(0,0,0,0.35),0 3px 8px rgba(0,0,0,0.5);border-radius:8px;display:flex;align-items:center;justify-content:center;color:white;text-align:center;text-shadow:0 1px 2px rgba(0,0,0,0.6);font-family:Segoe UI,system-ui,sans-serif;padding:2px 6px;">' + inner + unsyncedBadge + doneBadge + '</div>';
+  return L.divIcon({html, className:'', iconSize:[w, 30], iconAnchor:[Math.round(w/2), 15]});
 }
 
 // Refresh icon semua marker (dipanggil setelah array houses berubah urutan)
 function refreshAllIcons(){
-  houses.forEach((h,i)=>{
+  houses.forEach((h)=>{
     if(h.marker){
-      // Gunakan no_kk manual jika ada, fallback ke urutan otomatis
-      const kkLabel = h.no_kk || String(i+1);
-      h.marker.setIcon(makeIcon(h.status, h._unsynced, kkLabel, h.no));
+      h.marker.setIcon(makeIcon(h.status, h._unsynced, h.sls_name, h.no));
     }
   });
 }
@@ -1538,7 +1543,7 @@ function addHouseToMap(row){
   const kkIdx = houses.length + 1; // akan jadi index setelah push
   // no_kk: nomor KK yang bisa diedit manual (default = urutan otomatis)
   const no_kk = row.no_kk || String(kkIdx);
-  const marker=L.marker([row.lat,row.lng],{icon:makeIcon(row.status,!!row._unsynced, no_kk, row.no||''),draggable:true}).addTo(map);
+  const marker=L.marker([row.lat,row.lng],{icon:makeIcon(row.status,!!row._unsynced, row.sls_name||'', row.no||''),draggable:true}).addTo(map);
   const house={id:row.id,lat:row.lat,lng:row.lng,marker,no:row.no||'',no_kk:no_kk,kk:row.kk||'',jumlah:row.jumlah||'',catatan:row.catatan||'',status:row.status||'todo',petugas_code:row.petugas_code||'',_unsynced:!!row._unsynced,hp:row.hp||'',jenis_bangunan:row.jenis_bangunan||'',sls_name:row.sls_name||''};
   marker.bindPopup(popupContent(house));
   marker.on('click',()=>selectHouse(house.id));
@@ -1700,6 +1705,7 @@ function redetectSLS(id){
   if(!h) return;
   const detected = detectSLS(h.lat, h.lng);
   h.sls_name = detected;
+  if(h.marker) h.marker.setIcon(makeIcon(h.status, h._unsynced, h.sls_name, h.no));
   const el = document.getElementById('f_sls');
   if(el){
     el.value = detected || '';
@@ -1726,9 +1732,7 @@ function setStatus(id,status){
   const h=houses.find(x=>x.id===id);
   if(h.status===status) return;
   h.status=status;
-  const kkIdx = houses.findIndex(x=>x.id===id)+1;
-  const kkLabel = h.no_kk || String(kkIdx);
-  h.marker.setIcon(makeIcon(status,h._unsynced,kkLabel,h.no));
+  h.marker.setIcon(makeIcon(status,h._unsynced,h.sls_name,h.no));
   h.marker.bindPopup(popupContent(h));
   renderForm();renderList();updateStats();
   dbOp('houses','update',id,{status}).then(({error})=>{
@@ -1773,8 +1777,8 @@ function saveHouse(id){
   clearFieldErrors();
 
   h.no_kk=no_kk; h.no=no; h.kk=kk; h.jumlah=jumlah; h.catatan=catatan; h.hp=hp; h.jenis_bangunan=jenis_bangunan;
-  // Refresh ikon marker dengan no_kk dan no Bangunan terbaru
-  h.marker.setIcon(makeIcon(h.status, h._unsynced, h.no_kk, h.no));
+  // Refresh ikon marker dengan no Bangunan & warna SLS terbaru
+  h.marker.setIcon(makeIcon(h.status, h._unsynced, h.sls_name, h.no));
   h.marker.bindPopup(popupContent(h));
   renderForm();
   renderList();
@@ -1855,12 +1859,12 @@ function deleteAllHouses(){
 }
 
 function popupContent(h){
-  const kkLabel = h.no_kk || (houses.findIndex(x=>x.id===h.id)+1);
-  const bLabel  = h.no ? h.no : '';
-  const badge   = bLabel ? '<b>KK'+kkLabel+'/B'+esc(bLabel)+'</b>' : '<b>KK'+kkLabel+'</b>';
-  const slsTag  = h.sls_name ? '<br>SLS: <b>'+esc(h.sls_name)+'</b>' : '';
-  const jenisTag= h.jenis_bangunan ? '<br>Jenis: '+esc(h.jenis_bangunan) : '';
-  return badge+'<br>'+esc(h.kk||'-')+'<br>Anggota: '+esc(h.jumlah||'-')+'<br>Status: '+(h.status==='done'?'<svg class="icon icon-sm" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Sudah':'<svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Belum')+jenisTag+slsTag;
+  const bLabel  = h.no ? esc(String(h.no)) : '(tanpa nomor)';
+  const slsColor = getSLSColor(h.sls_name);
+  const badge   = '<b style="font-size:14px;">No. Bangunan '+bLabel+'</b>';
+  const statusTag = '<br>Status: '+(h.status==='done'?'<svg class="icon icon-sm" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Sudah':'<svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Belum');
+  const slsTag  = '<br><span style="display:inline-flex;align-items:center;gap:5px;margin-top:2px;"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:'+slsColor+';"></span>SLS: <b>'+(h.sls_name?esc(h.sls_name):'Belum masuk SLS')+'</b></span>';
+  return badge+statusTag+slsTag;
 }
 
 // Point-in-polygon (ray casting)
@@ -1920,16 +1924,14 @@ function renderList(filter){
     section.innerHTML=`<div class="empty-note">${msg}</div>`;
     return;
   }
-  section.innerHTML=list.map((h,_i)=>{
-    const kkLabel = h.no_kk || String(houses.findIndex(x=>x.id===h.id)+1);
-    const kkStr = 'KK'+kkLabel;
-    const bStr  = h.no ? '/B'+h.no : '';
+  section.innerHTML=list.map((h)=>{
+    const noLabel = h.no ? 'No. Bangunan '+esc(String(h.no)) : '(tanpa nomor)';
+    const slsColor = getSLSColor(h.sls_name);
     return `
     <div class="list-item" onclick="focusHouse(${h.id})">
-      <div class="dot ${h.status}"></div>
+      <div class="dot ${h.status}" style="background:${slsColor};" title="${h.sls_name?esc(h.sls_name):'Belum masuk SLS'}"></div>
       <div class="meta">
-        <div class="num">${kkStr}${bStr}</div>
-        <div class="name">${esc(h.kk||'Belum ada nama')}</div>
+        <div class="num">${noLabel}</div>
       </div>
     </div>`;
   }).join('');
@@ -1986,7 +1988,7 @@ function renderBoundaryList(){
   }
   section.innerHTML=boundaries.map(b=>`
     <div class="boundary-item">
-      <div class="bicon" style="background:${b.locked?'#c0392b':'#E8520A'}"></div>
+      <div class="bicon" style="background:${getSLSColor(b.name)}" title="Warna titik di SLS ini"></div>
       <input class="bname" value="${esc(b.name||'')}" placeholder="Nama SLS" onchange="renameBoundary(${b.id},this.value)">
       <button class="bbtn ${editingBoundaryItem&&editingBoundaryItem.id===b.id?'editing-active':''}" onclick="toggleEditBoundary(${b.id})">${editingBoundaryItem&&editingBoundaryItem.id===b.id?'Selesai':`<svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`}</button>
       <button class="bbtn ${b.locked?'locked':''}" onclick="toggleLockBoundary(${b.id})">${b.locked?`<svg class="icon icon-sm" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`:`<svg class="icon icon-sm" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>`}</button>
