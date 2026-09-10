@@ -367,6 +367,16 @@ button.danger:active{background:#fdf0ee;}
 .bbtn:active{background:var(--paper);}
 .bbtn.locked{background:#fdf0ee;border-color:var(--red);}
 .bbtn.editing-active{background:var(--bps-gold);color:white;border-color:var(--bps-gold);}
+.rumah-header-actions{display:flex;align-items:center;gap:8px;}
+.hapus-semua-btn{
+  border:1.5px solid var(--red);background:var(--white);color:var(--red);
+  border-radius:6px;padding:4px 8px;font-size:10px;font-weight:800;
+  text-transform:uppercase;letter-spacing:0.3px;
+  cursor:pointer;flex-shrink:0;
+  display:inline-flex;align-items:center;gap:4px;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation;
+}
+.hapus-semua-btn:active{background:#fdf0ee;}
 .search-box{padding:10px 14px;border-bottom:1px solid var(--line);position:relative;}
 .search-box .icon{position:absolute;left:24px;top:50%;transform:translateY(-50%);color:#8a7a70;pointer-events:none;}
 .search-box input{padding-left:34px;}
@@ -747,7 +757,13 @@ body.is-offline .offline-banner{display:flex;}
       <div id="rumahSection">
         <div class="section-header collapsed" id="rumahHeader" onclick="toggleSection('rumah')">
           <span>Daftar Rumah (<span id="rumahCount">0</span>)</span>
-          <svg class="icon icon-sm chev" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+          <div class="rumah-header-actions">
+            <button class="hapus-semua-btn" onclick="event.stopPropagation();deleteAllHouses()" title="Hapus semua titik penanda rumah">
+              <svg class="icon icon-sm" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              Hapus Semua
+            </button>
+            <svg class="icon icon-sm chev" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
         </div>
         <div class="section-body collapsed" id="listSection"></div>
       </div>
@@ -1809,6 +1825,33 @@ function deleteHouse(id){
     if(error) showToast('Gagal menghapus: '+(error.message||String(error)),'error');
     else showToast('Rumah dihapus.','success');
   });
+}
+
+function deleteAllHouses(){
+  if(houses.length===0){
+    showToast('Belum ada titik penanda untuk dihapus.','warn');
+    return;
+  }
+  showConfirm(
+    'Hapus Semua Titik',
+    'Hapus SEMUA ('+houses.length+') titik penanda rumah dari peta? Semua data yang sudah diisi akan hilang dan tindakan ini tidak bisa dibatalkan.',
+    true,
+    async()=>{
+      const toDelete=[...houses];
+      toDelete.forEach(h=>{ if(h.marker) map.removeLayer(h.marker); });
+      houses=[];
+      selectedId=null;
+      setDirty(false);
+      refreshAllIcons();
+      renderForm();renderList();updateStats();
+      showLoading('Menghapus semua titik...');
+      await Promise.all(toDelete.map(h=>dbOp('houses','delete',h.id,{})));
+      hideLoading();
+      showToast('Semua titik penanda ('+toDelete.length+') telah dihapus.','success');
+    },
+    null,
+    'Ya, Hapus Semua'
+  );
 }
 
 function popupContent(h){
