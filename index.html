@@ -8,7 +8,6 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/chroma-js/2.4.2/chroma.min.js"></script>
 <script>
 // Load Supabase dari multiple CDN sebagai fallback
 (function(){
@@ -388,12 +387,10 @@ button.danger:active{background:#fdf0ee;}
   -webkit-tap-highlight-color:transparent;
 }
 .list-item:active{background:var(--paper);}
-.dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
-.dot.done{background:var(--success);}
-.dot.todo{background:var(--bps-orange);}
+.dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;}
+.dot.done{box-shadow:0 0 0 2px var(--success);}
 .list-item .meta{flex:1;min-width:0;}
 .list-item .meta .num{font-weight:700;}
-.list-item .meta .name{color:#8a7a70;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 
 /* ===== CONFIRM / PROMPT MODAL ===== */
 .confirm-overlay,.prompt-overlay{
@@ -794,13 +791,6 @@ let isDirty = false;
 let pendingQueue = [];
 const QUEUE_KEY = 'sensus_pending_queue';
 
-// Boundary Colors
-const slsColors = ['#E8520A', '#1A5AA8', '#1a8a4a', '#8e44ad', '#f39c12', '#d35400', '#27ae60', '#2980b9'];
-
-function getSLSColor(index) {
-    return slsColors[index % slsColors.length];
-}
-
 // ===== SUPABASE INIT =====
 const SUPABASE_URL = 'https://ojybnopbaipceyttetyx.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qeWJub3BiYWlwY2V5dHRldHl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzMzkwMzEsImV4cCI6MjA5NjkxNTAzMX0.n00jlGfOGHWPfy-V2ohI7SGdgUXbm73nYIxGN54EzWQ';
@@ -1108,15 +1098,14 @@ function updatePendingUI(){
 // Mark houses that have a pending operation in the queue (visual "unsynced" indicator)
 function applyUnsyncedMarks(){
   const pendingIds=new Set(pendingQueue.filter(o=>o.table==='houses').map(o=>String(o.id)));
-  houses.forEach((h,i)=>{
+  houses.forEach((h)=>{
     const unsynced=pendingIds.has(String(h.id));
-    const kkLabel = h.no_kk || String(i+1);
-    if(h._unsynced===unsynced && h._lastIconNo===h.no && h._lastIconKK===kkLabel) return;
+    if(h._unsynced===unsynced && h._lastIconNo===h.no && h._lastIconSLS===h.sls_name) return;
     h._unsynced=unsynced;
     h._lastIconNo=h.no;
-    h._lastIconKK=kkLabel;
+    h._lastIconSLS=h.sls_name;
     if(h.marker){
-      h.marker.setIcon(makeIcon(h.status,unsynced,h.no));
+      h.marker.setIcon(makeIcon(h.status,unsynced,h.sls_name,h.no));
     }
   });
   renderList();
@@ -1207,7 +1196,7 @@ function remapHouseId(tempId, realId){
     h.marker.off('click');
     h.marker.on('click',()=>selectHouse(h.id));
     h.marker.bindPopup(popupContent(h));
-    h.marker.setIcon(makeIcon(h.status,false,h.no));
+    h.marker.setIcon(makeIcon(h.status,false,h.sls_name,h.no));
   }
   if(selectedId===tempId) selectedId=realId;
 }
@@ -1511,28 +1500,41 @@ function getKKIndex(houseId){
   return idx >= 0 ? idx+1 : '?';
 }
 
-function makeIcon(status, unsynced, bLabel){
-  const color     = status==='done' ? '#1a8a4a' : '#E8520A';
-  const darkColor = status==='done' ? '#0d5c2a' : '#9e3200';
-  const badge = unsynced
+// ===== WARNA PER SLS =====
+// Setiap SLS (berdasarkan nama batas wilayah) mendapat warna berbeda secara konsisten,
+// dihitung dari hash nama SLS sehingga warnanya tetap sama walau batas ditambah/dihapus.
+const SLS_COLOR_PALETTE = ['#E8520A','#1A5AA8','#1a8a4a','#8e44ad','#c0392b','#00838f','#d81b60','#6a1b9a','#F5A623','#5d4037','#7cb342','#37474f'];
+const DEFAULT_SLS_COLOR = '#6b6b6b'; // titik yang belum berada di dalam batas SLS manapun
+function hashString(str){
+  let h=0;
+  for(let i=0;i<str.length;i++){ h=(h*31+str.charCodeAt(i))>>>0; }
+  return h;
+}
+function getSLSColor(slsName){
+  if(!slsName) return DEFAULT_SLS_COLOR;
+  return SLS_COLOR_PALETTE[hashString(slsName) % SLS_COLOR_PALETTE.length];
+}
+
+function makeIcon(status, unsynced, slsName, bLabel){
+  const color = getSLSColor(slsName);
+  const label = bLabel ? esc(String(bLabel)) : '?';
+  const w = Math.max(30, label.length * 9 + 18);
+  const unsyncedBadge = unsynced
     ? '<div style="position:absolute;top:-5px;right:-5px;width:11px;height:11px;border-radius:50%;background:#F5A623;border:2px solid white;z-index:2;box-shadow:0 1px 3px rgba(0,0,0,0.4);"></div>'
     : '';
-  const bStr  = bLabel  ? bLabel  : '?';
-  const longestLen = bStr.length;
-  const w = Math.max(30, longestLen * 8 + 14);
-  const h = 30;
-  
-  const inner = '<span style="display:block;font-size:12px;font-weight:900;letter-spacing:0.2px;line-height:1;">' + bStr + '</span>';
-  
-  const html = '<div style="position:relative;width:' + w + 'px;height:' + h + 'px;background:' + color + ';border:2.5px solid white;box-shadow:0 0 0 1.5px ' + darkColor + ',0 3px 8px rgba(0,0,0,0.5);border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:white;text-align:center;text-shadow:0 1px 2px rgba(0,0,0,0.6);font-family:Segoe UI,system-ui,sans-serif;padding:2px;">' + inner + badge + '</div>';
-  return L.divIcon({html, className:'', iconSize:[w, h], iconAnchor:[Math.round(w/2), Math.round(h/2)]});
+  const doneBadge = status==='done'
+    ? '<div style="position:absolute;bottom:-5px;right:-5px;width:14px;height:14px;border-radius:50%;background:#1a8a4a;border:2px solid white;z-index:2;box-shadow:0 1px 3px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 24 24" style="width:8px;height:8px;fill:none;stroke:white;stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round;"><polyline points="20 6 9 17 4 12"/></svg></div>'
+    : '';
+  const inner = '<span style="display:block;font-size:12px;font-weight:900;letter-spacing:0.2px;line-height:1;">' + label + '</span>';
+  const html = '<div style="position:relative;width:' + w + 'px;height:30px;background:' + color + ';border:2.5px solid white;box-shadow:0 0 0 1.5px rgba(0,0,0,0.35),0 3px 8px rgba(0,0,0,0.5);border-radius:8px;display:flex;align-items:center;justify-content:center;color:white;text-align:center;text-shadow:0 1px 2px rgba(0,0,0,0.6);font-family:Segoe UI,system-ui,sans-serif;padding:2px 6px;">' + inner + unsyncedBadge + doneBadge + '</div>';
+  return L.divIcon({html, className:'', iconSize:[w, 30], iconAnchor:[Math.round(w/2), 15]});
 }
 
 // Refresh icon semua marker (dipanggil setelah array houses berubah urutan)
 function refreshAllIcons(){
-  houses.forEach((h,i)=>{
+  houses.forEach((h)=>{
     if(h.marker){
-      h.marker.setIcon(makeIcon(h.status, h._unsynced, h.no));
+      h.marker.setIcon(makeIcon(h.status, h._unsynced, h.sls_name, h.no));
     }
   });
 }
@@ -1541,7 +1543,7 @@ function addHouseToMap(row){
   const kkIdx = houses.length + 1; // akan jadi index setelah push
   // no_kk: nomor KK yang bisa diedit manual (default = urutan otomatis)
   const no_kk = row.no_kk || String(kkIdx);
-  const marker=L.marker([row.lat,row.lng],{icon:makeIcon(row.status,!!row._unsynced, row.no||''),draggable:true}).addTo(map);
+  const marker=L.marker([row.lat,row.lng],{icon:makeIcon(row.status,!!row._unsynced, row.sls_name||'', row.no||''),draggable:true}).addTo(map);
   const house={id:row.id,lat:row.lat,lng:row.lng,marker,no:row.no||'',no_kk:no_kk,kk:row.kk||'',jumlah:row.jumlah||'',catatan:row.catatan||'',status:row.status||'todo',petugas_code:row.petugas_code||'',_unsynced:!!row._unsynced,hp:row.hp||'',jenis_bangunan:row.jenis_bangunan||'',sls_name:row.sls_name||''};
   marker.bindPopup(popupContent(house));
   marker.on('click',()=>selectHouse(house.id));
@@ -1621,17 +1623,20 @@ function renderForm(){
   }
   const h=houses.find(x=>x.id===selectedId);
   if(!h){selectedId=null;renderForm();return;}
-  const bLabel  = h.no || '?';
+  const kkIdx = houses.findIndex(x=>x.id===selectedId)+1;
+  const kkLabel = h.no_kk || String(kkIdx);
+  const bLabel  = h.no || '';
   section.innerHTML=`
     <div class="panel-section">
-      <!-- PREVIEW BADGE B -->
+      <!-- PREVIEW BADGE KK/B -->
       <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:14px;">
         <div style="display:inline-flex;flex-direction:column;align-items:center;justify-content:center;
-          width:54px;height:54px;border-radius:50%;
+          min-width:54px;padding:6px 10px;border-radius:10px;
           background:${h.status==='done'?'#1a8a4a':'#E8520A'};
-          color:white;font-weight:900;font-size:16px;line-height:1;
+          color:white;font-weight:900;font-size:13px;line-height:1.4;
           box-shadow:0 2px 8px rgba(0,0,0,0.25);letter-spacing:0.3px;text-align:center;">
-          <span>${esc(bLabel)}</span>
+          <span>KK${kkLabel}</span>
+          ${bLabel?'<span style="opacity:0.8;font-size:11px;border-top:1px solid rgba(255,255,255,0.4);width:100%;text-align:center;padding-top:2px;margin-top:2px;">B'+esc(bLabel)+'</span>':''}
         </div>
         <div style="font-size:12px;color:#8a7a70;line-height:1.5;">
           <b style="color:var(--ink);">${esc(h.kk||'(belum diisi)')}</b><br>
@@ -1640,19 +1645,11 @@ function renderForm(){
       </div>
       <label>Status Sensus</label>
       <div class="status-row">
-        <button class="status-btn done ${h.status==='done'?'active':''}" onclick="setStatus('${h.id}','done')"><svg class="icon icon-sm" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Sudah</button>
-        <button class="status-btn todo ${h.status==='todo'?'active':''}" onclick="setStatus('${h.id}','todo')"><svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Belum</button>
+        <button class="status-btn done ${h.status==='done'?'active':''}" onclick="setStatus(${h.id},'done')"><svg class="icon icon-sm" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Sudah</button>
+        <button class="status-btn todo ${h.status==='todo'?'active':''}" onclick="setStatus(${h.id},'todo')"><svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Belum</button>
       </div>
-      <div style="display:flex;gap:8px;">
-        <div style="flex:1;">
-          <label>No. KK <span style="font-size:10px;color:#8a7a70;font-weight:400;">(nomor Keluarga)</span></label>
-          <input id="f_no_kk" value="${esc(h.no_kk||h.kkIdx)}" placeholder="contoh: 1" type="text">
-        </div>
-        <div style="flex:1;">
-          <label>No. Bangunan <span style="font-size:10px;color:#8a7a70;font-weight:400;">(No B)</span></label>
-          <input id="f_no" value="${esc(h.no)}" placeholder="contoh: 014">
-        </div>
-      </div>
+      <label>No. Bangunan <span style="font-size:10px;color:#8a7a70;font-weight:400;">(No B)</span></label>
+      <input id="f_no" value="${esc(h.no)}" placeholder="contoh: 014">
       <label>Nama Kepala Keluarga</label>
       <input id="f_kk" value="${esc(h.kk)}" placeholder="contoh: Budi Santoso">
       <label>No. HP Responden</label>
@@ -1673,17 +1670,17 @@ function renderForm(){
       <label>Berada di SLS</label>
       <div style="display:flex;gap:6px;align-items:center;">
         <input id="f_sls" value="${esc(h.sls_name)}" placeholder="Auto-deteksi dari batas SLS..." style="flex:1;" readonly>
-        <button class="bbtn" style="flex-shrink:0;padding:8px 10px;" onclick="redetectSLS('${h.id}')" title="Deteksi ulang SLS">🔄</button>
+        <button class="bbtn" style="flex-shrink:0;padding:8px 10px;" onclick="redetectSLS(${h.id})" title="Deteksi ulang SLS">🔄</button>
       </div>
       <label>Catatan</label>
       <textarea id="f_catatan" placeholder="catatan tambahan...">${esc(h.catatan)}</textarea>
       <div class="actions">
-        <button class="primary" id="btnSimpan" onclick="saveHouse('${h.id}')">Simpan</button>
-        <button class="danger" onclick="deleteHouse('${h.id}')">Hapus</button>
+        <button class="primary" id="btnSimpan" onclick="saveHouse(${h.id})">Simpan</button>
+        <button class="danger" onclick="deleteHouse(${h.id})">Hapus</button>
       </div>
     </div>`;
   setDirty(false);
-  ['f_no_kk','f_no','f_kk','f_hp','f_jumlah','f_jenis','f_catatan'].forEach(id=>{
+  ['f_no','f_kk','f_hp','f_jumlah','f_jenis','f_catatan'].forEach(id=>{
     const el=document.getElementById(id);
     if(!el) return;
     el.addEventListener('input',()=>{
@@ -1700,6 +1697,7 @@ function redetectSLS(id){
   if(!h) return;
   const detected = detectSLS(h.lat, h.lng);
   h.sls_name = detected;
+  if(h.marker) h.marker.setIcon(makeIcon(h.status, h._unsynced, h.sls_name, h.no));
   const el = document.getElementById('f_sls');
   if(el){
     el.value = detected || '';
@@ -1726,7 +1724,7 @@ function setStatus(id,status){
   const h=houses.find(x=>x.id===id);
   if(h.status===status) return;
   h.status=status;
-  h.marker.setIcon(makeIcon(status,h._unsynced,h.no));
+  h.marker.setIcon(makeIcon(status,h._unsynced,h.sls_name,h.no));
   h.marker.bindPopup(popupContent(h));
   renderForm();renderList();updateStats();
   dbOp('houses','update',id,{status}).then(({error})=>{
@@ -1738,7 +1736,6 @@ function setStatus(id,status){
 function saveHouse(id){
   const h=houses.find(x=>x.id===id);
   if(!h) return;
-  const no_kk=document.getElementById('f_no_kk')?.value.trim()||'';
   const no=document.getElementById('f_no').value.trim();
   const kk=document.getElementById('f_kk').value.trim();
   const hp=document.getElementById('f_hp')?.value.trim()||'';
@@ -1748,7 +1745,6 @@ function saveHouse(id){
 
   // ===== VALIDATION =====
   const errs=[];
-  if(!no_kk) errs.push('Nomor KK wajib diisi.');
   if(!no) errs.push('Nomor Bangunan wajib diisi.');
   if(!kk) errs.push('Nama Kepala Keluarga wajib diisi.');
   let jumlah=jumlahRaw;
@@ -1765,14 +1761,14 @@ function saveHouse(id){
   if(errs.length>0){
     showToast(errs[0],'error');
     const jBad=jumlahRaw===''||!Number.isInteger(Number(jumlahRaw))||Number(jumlahRaw)<0||Number(jumlahRaw)>50;
-    markFieldErrors({no:!no,no_kk:!no_kk,kk:!kk,jumlah:jBad});
+    markFieldErrors({no:!no,kk:!kk,jumlah:jBad});
     return;
   }
   clearFieldErrors();
 
-  h.no_kk=no_kk; h.no=no; h.kk=kk; h.jumlah=jumlah; h.catatan=catatan; h.hp=hp; h.jenis_bangunan=jenis_bangunan;
-  // Refresh ikon marker dengan no_kk dan no Bangunan terbaru
-  h.marker.setIcon(makeIcon(h.status, h._unsynced, h.no));
+  h.no=no; h.kk=kk; h.jumlah=jumlah; h.catatan=catatan; h.hp=hp; h.jenis_bangunan=jenis_bangunan;
+  // Refresh ikon marker dengan no Bangunan & warna SLS terbaru
+  h.marker.setIcon(makeIcon(h.status, h._unsynced, h.sls_name, h.no));
   h.marker.bindPopup(popupContent(h));
   renderForm();
   renderList();
@@ -1796,14 +1792,14 @@ function saveHouse(id){
 }
 
 function markFieldErrors(map){
-  ['no_kk','no','kk','jumlah'].forEach(k=>{
+  ['no','kk','jumlah'].forEach(k=>{
     const el=document.getElementById('f_'+k);
     if(!el) return;
     el.style.borderColor = map[k] ? 'var(--red)' : '';
   });
 }
 function clearFieldErrors(){
-  ['no_kk','no','kk','jumlah'].forEach(k=>{
+  ['no','kk','jumlah'].forEach(k=>{
     const el=document.getElementById('f_'+k);
     if(el) el.style.borderColor='';
   });
@@ -1853,393 +1849,284 @@ function deleteAllHouses(){
 }
 
 function popupContent(h){
-  const bLabel = h.no || '?';
-  return `<div style="font-family:'Segoe UI',sans-serif;min-width:180px;">
-    <div style="font-weight:800;font-size:14px;color:var(--bps-orange-deep);margin-bottom:6px;border-bottom:1px solid var(--line);padding-bottom:4px;">Bangunan ${esc(bLabel)}</div>
-    <div style="font-size:13px;margin-bottom:3px;"><b>KK:</b> ${esc(h.kk||'-')}</div>
-    <div style="font-size:13px;margin-bottom:3px;"><b>Anggota:</b> ${esc(h.jumlah||'-')} orang</div>
-    <div style="font-size:13px;margin-bottom:3px;"><b>Status:</b> <span style="color:${h.status==='done'?'var(--success)':'var(--bps-orange)'};font-weight:700;">${h.status==='done'?'Sudah Sensus':'Belum Sensus'}</span></div>
-    ${h.sls_name ? `<div style="font-size:12px;margin-top:4px;padding-top:4px;border-top:1px dashed var(--line);color:#8a7a70;">SLS: ${esc(h.sls_name)}</div>` : ''}
-  </div>`;
+  const bLabel  = h.no ? esc(String(h.no)) : '(tanpa nomor)';
+  const slsColor = getSLSColor(h.sls_name);
+  const badge   = '<b style="font-size:14px;">No. Bangunan '+bLabel+'</b>';
+  const statusTag = '<br>Status: '+(h.status==='done'?'<svg class="icon icon-sm" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Sudah':'<svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Belum');
+  const slsTag  = '<br><span style="display:inline-flex;align-items:center;gap:5px;margin-top:2px;"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:'+slsColor+';"></span>SLS: <b>'+(h.sls_name?esc(h.sls_name):'Belum masuk SLS')+'</b></span>';
+  return badge+statusTag+slsTag;
 }
 
-function updateStats(){
-  const total=houses.length;
-  const done=houses.filter(h=>h.status==='done').length;
-  document.getElementById('statTotal').textContent=total;
-  document.getElementById('statDone').textContent=done;
-  document.getElementById('statTodo').textContent=total-done;
-  document.getElementById('rumahCount').textContent=total;
-}
-
-function renderList(searchQuery){
-  let q='';
-  if(searchQuery!==undefined) q=searchQuery.toLowerCase();
-  else if(document.getElementById('searchBox')) q=document.getElementById('searchBox').value.toLowerCase();
-  
-  const sort = document.getElementById('sortSelect')?.value || 'default';
-  
-  const filtered = houses.filter(h=>{
-    const matchFlt = currentFilter==='all' || h.status===currentFilter;
-    const kkLabel = h.no_kk || String(houses.findIndex(x=>x.id===h.id)+1);
-    const matchSearch = q==='' ||
-                        (h.kk&&h.kk.toLowerCase().includes(q)) ||
-                        (h.no&&h.no.toLowerCase().includes(q)) ||
-                        kkLabel.includes(q) ||
-                        (h.sls_name&&h.sls_name.toLowerCase().includes(q));
-    return matchFlt && matchSearch;
-  });
-
-  if(sort==='no'){
-    filtered.sort((a,b)=> (a.no||'').localeCompare(b.no||'', undefined, {numeric:true}));
-  } else if(sort==='kk'){
-    filtered.sort((a,b)=> (a.kk||'').localeCompare(b.kk||''));
-  } else if(sort==='status'){
-    filtered.sort((a,b)=> (a.status===b.status ? 0 : a.status==='done' ? -1 : 1));
-  }
-
-  const list=document.getElementById('listSection');
-  if(filtered.length===0){
-    list.innerHTML=`<div class="empty-note">Tidak ada rumah sesuai pencarian/filter.</div>`;
-    return;
-  }
-  list.innerHTML=filtered.map(h=>{
-    const active = h.id===selectedId ? 'background:var(--paper);border-left:3px solid var(--bps-orange-deep);' : '';
-    const kkIdx = houses.findIndex(x=>x.id===h.id)+1;
-    const kkLabel = h.no_kk || String(kkIdx);
-    return `<div class="list-item" style="${active}" onclick="selectHouse('${h.id}')">
-      <div class="dot ${h.status}"></div>
-      <div class="meta">
-        <div class="num">B${esc(h.no||'?')} &middot; KK${esc(kkLabel)} ${h._unsynced?'<span style="color:var(--bps-gold);font-size:10px;">(Pending)</span>':''}</div>
-        <div class="name">${esc(h.kk||'(Belum ada nama)')}${h.sls_name?' &bull; '+esc(h.sls_name):''}</div>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-// ===== BOUNDARY (SLS) =====
-async function loadBoundary(){
-  if(!sb) return;
-  let data, error;
-  try{ ({ data, error } = await sb.from('boundaries').select('*').eq('user_id', currentUser.id)); }
-  catch(e){ error = e; }
-  if(error){ console.warn('Gagal memuat batas SLS:', error); return; }
-  if(data){
-    data.forEach(d => {
-      if(!d.geojson) return;
-      try{
-        const index = boundaries.length;
-        const color = getSLSColor(index);
-        const l = L.geoJSON(d.geojson,{style: {...lockedStyle, color: color}}).addTo(boundaryLayerGroup);
-        boundaries.push({id:d.id, name:d.name, layer:l, color: color});
-      }catch(e){console.warn('GeoJSON invalid', e);}
-    });
-    renderBoundaryList();
-    updateBoundaryMask();
-  }
-}
-
-function startNewBoundary(){
-  if(editingBoundary){
-    showToast('Selesaikan dulu batas yang sedang diedit!','warn');
-    return;
-  }
-  document.getElementById('boundaryToggle').classList.add('editing');
-  document.getElementById('boundaryLabel').textContent='Menggambar...';
-  showToast('Silakan gambar area batas SLS di peta. Klik titik awal untuk selesai.','info');
-  drawControl = new L.Draw.Polygon(map, {
-    shapeOptions: editStyle,
-    allowIntersection: false,
-    drawError: {color: '#e1e100', message: 'Garis tidak boleh menyilang!'}
-  });
-  drawControl.enable();
-  editingBoundary = true;
-  map.once('draw:created', async function(e) {
-    const layer = e.layer;
-    
-    // Tampilkan prompt untuk nama SLS
-    showPrompt('Nama / Nomor SLS', 'Masukkan nama atau nomor SLS (misal: RT 01, Dusun A):', '', async function(name){
-      if(!name) name = 'SLS Baru';
-      
-      const geojson = layer.toGeoJSON();
-      const tempId = 'tmp_' + Date.now();
-      const index = boundaries.length;
-      const color = getSLSColor(index);
-      
-      layer.setStyle({...lockedStyle, color: color});
-      boundaryLayerGroup.addLayer(layer);
-      
-      const bItem = {id: tempId, name, layer, color: color};
-      boundaries.push(bItem);
-      renderBoundaryList();
-      updateBoundaryMask();
-      stopBoundaryEdit();
-      toggleSection('boundary', true);
-      
-      queueOperation({
-        table:'boundaries', type:'insert', id:tempId,
-        values: { name, geojson, user_id:currentUser?.id, petugas_code:currentPetugas?.code }
-      });
-      showToast('Batas SLS disimpan (offline).','warn');
-      if(!navigator.onLine || !sb) return;
-
-      const { data, error } = await sb.from('boundaries').insert({
-        name, geojson, user_id: currentUser.id, petugas_code: currentPetugas.code
-      }).select().single();
-      
-      if(error){
-        showToast('Gagal menyimpan batas: ' + (error.message||String(error)), 'error');
-      } else {
-        remapBoundaryId(tempId, data);
-        showToast('Batas SLS ' + name + ' ditambahkan.','success');
-      }
-    }, function(){
-      // Cancelled
-      stopBoundaryEdit();
-    });
-  });
-}
-
-function stopBoundaryEdit(){
-  if(drawControl){ drawControl.disable(); drawControl=null; }
-  editingBoundary = false;
-  editingBoundaryItem = null;
-  document.getElementById('boundaryToggle').classList.remove('editing');
-  document.getElementById('boundaryLabel').textContent='Tambah Batas SLS';
-  updateBoundaryMask();
-}
-
-function renderBoundaryList(){
-  document.getElementById('boundaryCount').textContent = boundaries.length;
-  const list = document.getElementById('boundaryList');
-  if(boundaries.length===0){
-    list.innerHTML=`<div class="empty-note">Belum ada batas SLS dibuat.<br>Klik tombol "Tambah Batas SLS" di peta.</div>`;
-    return;
-  }
-  list.innerHTML = boundaries.map(b => `
-    <div class="boundary-item" id="bitem_${b.id}">
-      <div class="bicon" style="background:${b.color};"></div>
-      <input type="text" class="bname" value="${esc(b.name)}" onchange="updateBoundaryName('${b.id}', this.value)">
-      <button class="bbtn ${editingBoundaryItem===b.id?'editing-active':''}" onclick="editBoundaryArea('${b.id}')" title="Edit area">
-        <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-      </button>
-      <button class="bbtn locked" onclick="deleteBoundary('${b.id}')" title="Hapus">
-        <svg class="icon icon-sm" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
-      </button>
-    </div>
-  `).join('');
-}
-
-function updateBoundaryName(id, newName){
-  const b = boundaries.find(x=>x.id===id);
-  if(!b) return;
-  b.name = newName;
-  dbOp('boundaries','update',id,{name:newName}).then(({error})=>{
-    if(error) showToast('Gagal mengubah nama SLS.','error');
-    else showToast('Nama SLS diperbarui.','success');
-  });
-}
-
-function editBoundaryArea(id){
-  if(editingBoundary){
-    showToast('Selesaikan edit yang sedang aktif.','warn');
-    return;
-  }
-  const b = boundaries.find(x=>x.id===id);
-  if(!b) return;
-  editingBoundary = true;
-  editingBoundaryItem = id;
-  
-  // Ambil layer pertama (karena GeoJSON layer group)
-  let polygon = null;
-  b.layer.eachLayer(l => polygon=l);
-  if(!polygon) return;
-  
-  polygon.setStyle({ ...editStyle, color: b.color });
-  polygon.editing.enable();
-  
-  renderBoundaryList();
-  showToast('Geser titik-titik pada batas '+b.name+'. Klik tombol Centang jika selesai.','info');
-  
-  // Ubah tombol di list
-  const itemEl = document.getElementById('bitem_'+id);
-  if(itemEl){
-    const btn = itemEl.querySelector('.bbtn[title="Edit area"]');
-    if(btn){
-      btn.innerHTML = '<svg class="icon icon-sm" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>';
-      btn.onclick = () => saveBoundaryArea(id);
-    }
-  }
-  updateBoundaryMask();
-}
-
-function saveBoundaryArea(id){
-  const b = boundaries.find(x=>x.id===id);
-  if(!b) return;
-  
-  let polygon = null;
-  b.layer.eachLayer(l => polygon=l);
-  if(polygon) {
-    polygon.editing.disable();
-    polygon.setStyle({...lockedStyle, color: b.color});
-    const geojson = b.layer.toGeoJSON();
-    dbOp('boundaries','update',id,{geojson}).then(({error})=>{
-      if(error) showToast('Gagal menyimpan area: '+(error.message||String(error)),'error');
-      else {
-        showToast('Area batas SLS disimpan.','success');
-        updateBoundaryMask();
-      }
-    });
-  }
-  stopBoundaryEdit();
-  renderBoundaryList();
-}
-
-function deleteBoundary(id){
-  showConfirm('Hapus Batas SLS', 'Hapus batas SLS ini?', true, async()=>{
-    const b = boundaries.find(x=>x.id===id);
-    if(!b) return;
-    boundaryLayerGroup.removeLayer(b.layer);
-    boundaries = boundaries.filter(x=>x.id!==id);
-    
-    // Re-assign colors to maintain variety if needed, or keep original.
-    // Keeping original is easier, just render.
-    
-    renderBoundaryList();
-    updateBoundaryMask();
-    const {error}=await dbOp('boundaries','delete',id,{});
-    if(error) showToast('Gagal menghapus batas SLS.','error');
-  });
-}
-
-// Memperbarui layer mask (menggelapkan area di luar SLS)
-function updateBoundaryMask(){
-  if(maskLayer) map.removeLayer(maskLayer);
-  if(boundaries.length===0 || editingBoundary) return;
-  
-  // Kumpulkan semua polygon SLS
-  const polygons = [];
-  boundaries.forEach(b => {
-    b.layer.eachLayer(l => {
-      if(l instanceof L.Polygon) {
-        const latlngs = l.getLatLngs()[0].map(pt => [pt.lat, pt.lng]);
-        polygons.push(latlngs);
-      }
-    });
-  });
-  
-  if(polygons.length > 0){
-    maskLayer = L.polygon([WORLD_RING, ...polygons], {
-      color: 'none',
-      fillColor: '#000',
-      fillOpacity: 0.35,
-      interactive: false
-    }).addTo(map);
-  }
-}
-
-// Ray-casting algorithm untuk mendeteksi rumah masuk SLS mana
-function pointInPolygon(point, vs) {
-  let x = point[0], y = point[1];
+// Point-in-polygon (ray casting)
+function pointInPolygon(lat, lng, latlngs){
   let inside = false;
-  for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
-    let xi = vs[i][0], yi = vs[i][1];
-    let xj = vs[j][0], yj = vs[j][1];
-    let intersect = ((yi > y) != (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
-    if (intersect) inside = !inside;
+  const n = latlngs.length;
+  for(let i=0, j=n-1; i<n; j=i++){
+    const xi=latlngs[i][0], yi=latlngs[i][1];
+    const xj=latlngs[j][0], yj=latlngs[j][1];
+    if(((yi>lng)!==(yj>lng))&&(lat<(xj-xi)*(lng-yi)/(yj-yi)+xi)){
+      inside=!inside;
+    }
   }
   return inside;
 }
 
 function detectSLS(lat, lng){
-  if(boundaries.length===0) return '';
-  for(let b of boundaries){
-    let inside = false;
-    b.layer.eachLayer(l => {
-      if(l instanceof L.Polygon) {
-        // leafet coords: {lat, lng}, we need [lng, lat] for raycasting or [lat, lng] consistently
-        // let's use [lat, lng]
-        const pts = l.getLatLngs()[0].map(pt => [pt.lat, pt.lng]);
-        if(pointInPolygon([lat, lng], pts)) inside = true;
-      }
-    });
-    if(inside) return b.name;
+  for(const b of boundaries){
+    try{
+      const ring = JSON.parse(b.geojson);
+      if(pointInPolygon(lat, lng, ring)) return b.name || 'SLS Tanpa Nama';
+    } catch(e){}
   }
   return '';
 }
 
-// Utility
-function esc(str){
-  if(typeof str !== 'string') return '';
-  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function renderList(filter){
+  const section=document.getElementById('listSection');
+  const countEl=document.getElementById('rumahCount');
+  if(filter===undefined){
+    filter=document.getElementById('searchBox')?.value||'';
+  }
+  if(countEl) countEl.textContent = houses.length;
+  let list=houses;
+  if(currentFilter!=='all'){
+    list=list.filter(h=>h.status===currentFilter);
+  }
+  if(filter){
+    const f=filter.toLowerCase();
+    list=list.filter(h=>(h.no||'').toLowerCase().includes(f)||(h.kk||'').toLowerCase().includes(f));
+  }
+  const sortBy=document.getElementById('sortSelect')?.value||'default';
+  if(sortBy==='no'){
+    list=[...list].sort((a,b)=>(a.no||'').localeCompare(b.no||'',undefined,{numeric:true}));
+  } else if(sortBy==='kk'){
+    list=[...list].sort((a,b)=>(a.kk||'').localeCompare(b.kk||''));
+  } else if(sortBy==='status'){
+    list=[...list].sort((a,b)=>(a.status>b.status?1:a.status<b.status?-1:0));
+  }
+  if(list.length===0){
+    let msg='Belum ada rumah yang ditandai.';
+    if(houses.length>0){
+      if(currentFilter==='todo') msg='Tidak ada rumah yang belum disensus.';
+      else if(currentFilter==='done') msg='Tidak ada rumah yang sudah disensus.';
+      else msg='Tidak ada hasil pencarian.';
+    }
+    section.innerHTML=`<div class="empty-note">${msg}</div>`;
+    return;
+  }
+  section.innerHTML=list.map((h)=>{
+    const noLabel = h.no ? 'No. Bangunan '+esc(String(h.no)) : '(tanpa nomor)';
+    const slsColor = getSLSColor(h.sls_name);
+    return `
+    <div class="list-item" onclick="focusHouse(${h.id})">
+      <div class="dot ${h.status}" style="background:${slsColor};" title="${h.sls_name?esc(h.sls_name):'Belum masuk SLS'}"></div>
+      <div class="meta">
+        <div class="num">${noLabel}</div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
-// Modal Konfirmasi kustom
-let confirmCallback = null;
-let confirmNoCallback = null;
-function showConfirm(title, msg, isDanger=false, onYes, onNo, yesText='Ya'){
-  const old=document.getElementById('sysConfirm');
-  if(old) old.remove();
-  confirmCallback = onYes;
-  confirmNoCallback = onNo;
-  const overlay = document.createElement('div');
-  overlay.id = 'sysConfirm';
-  overlay.className = 'confirm-overlay';
-  overlay.innerHTML = `
-    <div class="confirm-box">
-      <div class="confirm-title">${esc(title)}</div>
-      <p>${esc(msg)}</p>
-      <div class="confirm-actions">
-        <button class="no" onclick="closeConfirm(false)">Batal</button>
-        <button class="yes ${isDanger?'danger-yes':''}" onclick="closeConfirm(true)">${esc(yesText)}</button>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(overlay);
-}
-function closeConfirm(isYes){
-  const overlay = document.getElementById('sysConfirm');
-  if(overlay) overlay.remove();
-  if(isYes && confirmCallback) confirmCallback();
-  if(!isYes && confirmNoCallback) confirmNoCallback();
-  confirmCallback = null; confirmNoCallback = null;
+function focusHouse(id){
+  const h=houses.find(x=>x.id===id);
+  map.setView([h.lat,h.lng],Math.max(map.getZoom(),17));
+  h.marker.openPopup();
+  selectHouse(id);
 }
 
-// Modal Prompt kustom
-let promptCallback = null;
-let promptCancelCallback = null;
-function showPrompt(title, msg, defaultValue='', onOk, onCancel){
-  const old=document.getElementById('sysPrompt');
-  if(old) old.remove();
-  promptCallback = onOk;
-  promptCancelCallback = onCancel;
-  const overlay = document.createElement('div');
-  overlay.id = 'sysPrompt';
-  overlay.className = 'prompt-overlay';
-  overlay.innerHTML = `
-    <div class="prompt-box">
-      <div class="prompt-title">${esc(title)}</div>
-      <label>${esc(msg)}</label>
-      <input type="text" id="sysPromptInput" value="${esc(defaultValue)}">
-      <div class="prompt-actions">
-        <button class="cancel" onclick="closePrompt(false)">Batal</button>
-        <button class="ok" onclick="closePrompt(true)">Simpan</button>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(overlay);
-  setTimeout(()=>document.getElementById('sysPromptInput').focus(), 100);
+function updateStats(){
+  document.getElementById('statTotal').textContent=houses.length;
+  document.getElementById('statDone').textContent=houses.filter(h=>h.status==='done').length;
+  document.getElementById('statTodo').textContent=houses.filter(h=>h.status==='todo').length;
 }
-function closePrompt(isOk){
-  const input = document.getElementById('sysPromptInput');
-  const val = input ? input.value.trim() : '';
-  const overlay = document.getElementById('sysPrompt');
-  if(overlay) overlay.remove();
-  if(isOk && promptCallback) promptCallback(val);
-  if(!isOk && promptCancelCallback) promptCancelCallback();
-  promptCallback = null; promptCancelCallback = null;
+
+// ===== BOUNDARIES =====
+function refreshMask(){
+  if(maskLayer) map.removeLayer(maskLayer);
+  if(boundaries.length===0) return;
+  const rings=[WORLD_RING,...boundaries.map(b=>JSON.parse(b.geojson))];
+  maskLayer=L.polygon(rings,{color:'transparent',weight:0,fillColor:'#555',fillOpacity:0.35,interactive:false}).addTo(map);
+  maskLayer.bringToBack();
+}
+
+async function loadBoundary(){
+  showLoading('Memuat batas wilayah...');
+  let data, error;
+  try{ ({ data, error } = await sb.from('boundaries').select('*').eq('user_id',currentUser.id).order('id')); }
+  catch(e){ error = e; }
+  hideLoading();
+  if(error){console.warn('boundaries error:',(error.message||String(error)));return;}
+  boundaries=data||[];
+  boundaries.forEach(b=>{
+    const latlngs=JSON.parse(b.geojson);
+    b.layer=L.polygon(latlngs,b.locked?lockedStyle:editStyle).addTo(boundaryLayerGroup);
+    b.layer.bindTooltip(b.name||'SLS',{sticky:true});
+  });
+  refreshMask();renderBoundaryList();
+  if(boundaries.length>0){
+    const group=L.featureGroup(boundaries.map(b=>b.layer));
+    map.fitBounds(group.getBounds(),{maxZoom:17});
+  }
+}
+
+function renderBoundaryList(){
+  const section=document.getElementById('boundaryList');
+  document.getElementById('boundaryCount').textContent = boundaries.length;
+  if(boundaries.length===0){
+    section.innerHTML=`<div class="empty-note" style="padding:8px 14px;font-size:12px;">Belum ada batas SLS. Klik "Tambah Batas SLS".</div>`;
+    return;
+  }
+  section.innerHTML=boundaries.map(b=>`
+    <div class="boundary-item">
+      <div class="bicon" style="background:${getSLSColor(b.name)}" title="Warna titik di SLS ini"></div>
+      <input class="bname" value="${esc(b.name||'')}" placeholder="Nama SLS" onchange="renameBoundary(${b.id},this.value)">
+      <button class="bbtn ${editingBoundaryItem&&editingBoundaryItem.id===b.id?'editing-active':''}" onclick="toggleEditBoundary(${b.id})">${editingBoundaryItem&&editingBoundaryItem.id===b.id?'Selesai':`<svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`}</button>
+      <button class="bbtn ${b.locked?'locked':''}" onclick="toggleLockBoundary(${b.id})">${b.locked?`<svg class="icon icon-sm" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`:`<svg class="icon icon-sm" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>`}</button>
+      <button class="bbtn" onclick="deleteBoundaryItem(${b.id})"><svg class="icon icon-sm" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+    </div>`).join('');
+}
+
+function startNewBoundary(){
+  if(editingBoundary){showToast('Selesaikan dulu pengeditan batas yang sedang berjalan.','warn');return;}
+  editingBoundary=true;
+  document.getElementById('boundaryToggle').classList.add('editing');
+  document.getElementById('boundaryLabel').textContent='Klik peta utk gambar...';
+  if(!drawControl){
+    drawControl=new L.Control.Draw({
+      position:'topright',
+      draw:{polygon:{allowIntersection:false,shapeOptions:editStyle},polyline:false,rectangle:false,circle:false,marker:false,circlemarker:false},
+      edit:false
+    });
+  }
+  map.addControl(drawControl);
+  function onCreate(e){
+    map.off(L.Draw.Event.CREATED,onCreate);
+    map.removeControl(drawControl);
+    editingBoundary=false;
+    document.getElementById('boundaryToggle').classList.remove('editing');
+    document.getElementById('boundaryLabel').textContent='Tambah Batas SLS';
+    const layer=e.layer;
+    layer.setStyle(editStyle);
+    boundaryLayerGroup.addLayer(layer);
+    const latlngs=layer.getLatLngs()[0].map(p=>[p.lat,p.lng]);
+    saveNewBoundary(latlngs,layer);
+  }
+  map.on(L.Draw.Event.CREATED,onCreate);
+}
+
+async function saveNewBoundary(latlngs,layer){
+  showPrompt('Nama wilayah SLS ini:','SLS Baru',async(name)=>{
+    if(!name) name='SLS Baru';
+    const geojson=JSON.stringify(latlngs);
+    showLoading('Menyimpan batas...');
+    let data, error;
+    try{ ({ data, error } = await sb.from('boundaries').insert({
+      name,geojson,locked:false,
+      petugas_code:currentPetugas.code,
+      petugas_name:currentPetugas.name,
+      user_id:currentUser.id
+    }).select().single()); }
+    catch(e){ error = e; }
+    hideLoading();
+    if(error){showToast('Gagal menyimpan batas: '+(error.message||String(error)),'error');boundaryLayerGroup.removeLayer(layer);return;}
+    data.layer=layer;
+    layer.bindTooltip(data.name,{sticky:true});
+    boundaries.push(data);
+    refreshMask();renderBoundaryList();toggleSection('boundary', true);
+  },()=>{boundaryLayerGroup.removeLayer(layer);refreshMask();});
+}
+
+function toggleEditBoundary(id){
+  const b=boundaries.find(x=>x.id===id);
+  if(editingBoundaryItem&&editingBoundaryItem.id===id){finishEditBoundary();return;}
+  if(editingBoundaryItem){showToast('Selesaikan dulu pengeditan batas lain.','warn');return;}
+  if(b.locked){showToast('Batas ini terkunci. Buka kunci dulu.','warn');return;}
+  editingBoundaryItem=b;
+  b.layer.editing.enable();
+  renderBoundaryList();
+}
+
+async function finishEditBoundary(){
+  const b=editingBoundaryItem;
+  b.layer.editing.disable();
+  const latlngs=b.layer.getLatLngs()[0].map(p=>[p.lat,p.lng]);
+  const geojson=JSON.stringify(latlngs);
+  const {error}=await dbOp('boundaries','update',b.id,{geojson});
+  if(error) showToast('Gagal menyimpan: '+error.message,'error');
+  else b.geojson=geojson;
+  editingBoundaryItem=null;
+  refreshMask();renderBoundaryList();
+}
+
+async function toggleLockBoundary(id){
+  const b=boundaries.find(x=>x.id===id);
+  const newLocked=!b.locked;
+  const {error}=await dbOp('boundaries','update',id,{locked:newLocked});
+  if(error){showToast('Gagal: '+error.message,'error');return;}
+  b.locked=newLocked;
+  b.layer.setStyle(newLocked?lockedStyle:editStyle);
+  if(newLocked&&editingBoundaryItem&&editingBoundaryItem.id===id){b.layer.editing.disable();editingBoundaryItem=null;}
+  renderBoundaryList();
+}
+
+function deleteBoundaryItem(id){
+  showConfirm('Hapus Batas SLS','Hapus batas wilayah ini dari peta?',true,async()=>{
+    const b=boundaries.find(x=>x.id===id);
+    if(!b) return;
+    boundaryLayerGroup.removeLayer(b.layer);
+    boundaries=boundaries.filter(x=>x.id!==id);
+    if(editingBoundaryItem&&editingBoundaryItem.id===id) editingBoundaryItem=null;
+    refreshMask();renderBoundaryList();
+    const {error}=await dbOp('boundaries','delete',id,{});
+    if(error) showToast('Gagal menghapus: '+error.message,'error');
+  });
+}
+
+async function renameBoundary(id,name){
+  const b=boundaries.find(x=>x.id===id);
+  b.name=name;
+  b.layer.bindTooltip(name||'SLS',{sticky:true});
+  const {error}=await dbOp('boundaries','update',id,{name});
+  if(error) showToast('Gagal menyimpan nama: '+error.message,'error');
+}
+
+// ===== UTILITIES =====
+function esc(s){
+  return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function showConfirm(title,message,isDanger,onYes,onNo,yesLabel){
+  const o=document.createElement('div');
+  o.className='confirm-overlay';
+  o.innerHTML=`<div class="confirm-box">
+    <div class="confirm-title">${esc(title)}</div>
+    <p>${esc(message)}</p>
+    <div class="confirm-actions">
+      <button class="no">Tidak</button>
+      <button class="yes ${isDanger?'danger-yes':''}">${esc(yesLabel||'Ya, lanjutkan')}</button>
+    </div></div>`;
+  document.body.appendChild(o);
+  o.querySelector('.yes').addEventListener('click',()=>{document.body.removeChild(o);onYes&&onYes();});
+  o.querySelector('.no').addEventListener('click', ()=>{document.body.removeChild(o);onNo&&onNo();});
+}
+
+function showPrompt(label,defaultValue,onOk,onCancel){
+  const o=document.createElement('div');
+  o.className='prompt-overlay';
+  o.innerHTML=`<div class="prompt-box">
+    <label>${esc(label)}</label>
+    <input id="pInput" value="${esc(defaultValue)}" type="text">
+    <div class="prompt-actions">
+      <button class="cancel">Batal</button>
+      <button class="ok">OK</button>
+    </div></div>`;
+  document.body.appendChild(o);
+  const inp=o.querySelector('#pInput');
+  inp.focus();inp.select();
+  o.querySelector('.ok').addEventListener('click',()=>{const v=inp.value.trim();document.body.removeChild(o);onOk&&onOk(v||defaultValue);});
+  o.querySelector('.cancel').addEventListener('click',()=>{document.body.removeChild(o);onCancel&&onCancel();});
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter')o.querySelector('.ok').click();if(e.key==='Escape')o.querySelector('.cancel').click();});
 }
 </script>
 </body>
 </html>
-```eof
