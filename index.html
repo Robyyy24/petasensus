@@ -519,6 +519,112 @@ body.is-offline .offline-banner{display:flex;}
 }
 .export-row button:active{background:#fff0e6;}
 
+/* ===== DAFTAR PER SLS ===== */
+.sls-analyze-btn{
+  border:1.5px solid var(--bps-blue);background:var(--white);color:var(--bps-blue);
+  border-radius:6px;padding:4px 8px;font-size:10px;font-weight:800;
+  text-transform:uppercase;letter-spacing:0.3px;
+  cursor:pointer;flex-shrink:0;
+  display:inline-flex;align-items:center;gap:4px;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation;
+}
+.sls-analyze-btn:active{background:#eaf1fb;}
+.header-issue-badge{
+  background:var(--red);color:white;border-radius:999px;
+  font-size:10px;font-weight:800;padding:1px 6px;margin-left:4px;
+}
+.sls-group{border-bottom:1px solid var(--line);}
+.sls-group summary{
+  list-style:none;cursor:pointer;padding:9px 14px;
+  display:flex;align-items:center;gap:8px;background:var(--paper);
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation;
+}
+.sls-group summary::-webkit-details-marker{display:none;}
+.sls-group summary .chev{transition:transform .15s;flex-shrink:0;margin-left:auto;}
+.sls-group[open] summary .chev{transform:rotate(180deg);}
+.sls-group-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0;}
+.sls-group-name{font-size:13px;font-weight:800;color:var(--ink);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.sls-group-stats{display:flex;gap:5px;flex-shrink:0;}
+.sls-chip{font-size:10px;font-weight:700;padding:2px 6px;border-radius:999px;background:var(--line);color:#5a4a40;}
+.sls-chip.done{background:rgba(26,138,74,0.18);color:var(--success);}
+.sls-chip.todo{background:rgba(232,82,10,0.18);color:var(--bps-orange-deep);}
+.sls-chip.issue{background:rgba(192,57,43,0.15);color:var(--red);}
+.sls-group-body{padding:4px 0;}
+.sls-row{
+  display:flex;align-items:center;gap:9px;
+  padding:7px 14px 7px 30px;font-size:12.5px;
+  cursor:pointer;border-bottom:1px dashed var(--line);
+}
+.sls-row:last-child{border-bottom:none;}
+.sls-row:active{background:var(--paper);}
+.sls-row .urutan{
+  width:20px;height:20px;border-radius:50%;background:var(--line);
+  color:#5a4a40;font-size:10px;font-weight:800;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.sls-row.dup .urutan{background:var(--red);color:white;}
+.sls-row .sls-row-txt{flex:1;min-width:0;}
+.sls-row .sls-row-no{font-weight:800;color:var(--ink);}
+.sls-row .sls-row-kk{font-size:11px;color:#8a7a70;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.sls-row.dup{background:#fdf0ee;}
+.sls-row-dupbadge{
+  font-size:9px;font-weight:800;color:white;background:var(--red);
+  border-radius:5px;padding:1px 5px;flex-shrink:0;text-transform:uppercase;
+}
+.sls-group-empty{padding:8px 14px 8px 30px;font-size:12px;color:#8a7a70;}
+
+/* ===== INFO / REPORT MODAL ===== */
+.info-modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,0.45);
+  display:flex;align-items:center;justify-content:center;
+  z-index:9600;padding:16px;
+}
+.info-modal-box{
+  background:var(--white);border-radius:14px;
+  width:100%;max-width:460px;max-height:82vh;
+  display:flex;flex-direction:column;overflow:hidden;
+  box-shadow:0 20px 60px rgba(0,0,0,0.35);
+}
+.info-modal-head{
+  padding:16px 18px 12px;border-bottom:1px solid var(--line);
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+}
+.info-modal-head h3{font-size:15px;font-weight:800;color:var(--bps-orange-deep);}
+.info-modal-close{
+  background:var(--line);border:none;border-radius:50%;
+  width:26px;height:26px;flex-shrink:0;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;color:var(--ink);
+}
+.info-modal-body{padding:14px 18px;overflow-y:auto;font-size:12.5px;line-height:1.6;}
+.info-modal-body h4{font-size:12px;text-transform:uppercase;letter-spacing:0.4px;color:var(--bps-blue);margin:14px 0 6px;}
+.info-modal-body h4:first-child{margin-top:0;}
+.info-modal-sls-block{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:10px;}
+.info-modal-sls-title{display:flex;align-items:center;gap:7px;font-weight:800;font-size:13px;margin-bottom:6px;}
+.info-issue-line{display:flex;gap:6px;align-items:flex-start;margin:4px 0;font-size:12px;}
+.info-issue-line .tag{
+  flex-shrink:0;font-size:9px;font-weight:800;color:white;border-radius:5px;
+  padding:2px 6px;text-transform:uppercase;margin-top:1px;
+}
+.tag.dup{background:var(--red);}
+.tag.missing{background:var(--bps-gold);}
+.tag.ok{background:var(--success);}
+.tag.warn{background:#8a7a70;}
+.info-modal-empty{color:var(--success);font-weight:700;display:flex;align-items:center;gap:6px;}
+.info-modal-foot{
+  padding:12px 18px;border-top:1px solid var(--line);
+  display:flex;gap:8px;
+}
+.info-modal-foot button{flex:1;}
+.no-suggest-hint{
+  font-size:11px;color:var(--bps-blue-mid);margin-top:4px;
+  display:flex;align-items:center;gap:5px;flex-wrap:wrap;
+}
+.no-suggest-hint button{
+  border:1px solid var(--bps-blue-mid);background:var(--white);color:var(--bps-blue-mid);
+  border-radius:5px;padding:2px 7px;font-size:10.5px;font-weight:700;cursor:pointer;
+}
+.no-suggest-hint button:active{background:#eaf1fb;}
+
 /* ===== DRAG HINT ===== */
 .drag-hint{
   position:fixed;bottom:70px;left:50%;transform:translateX(-50%);
@@ -764,6 +870,19 @@ body.is-offline .offline-banner{display:flex;}
           </div>
         </div>
         <div class="section-body collapsed" id="listSection"></div>
+      </div>
+      <div id="slsSection">
+        <div class="section-header collapsed" id="slsHeader" onclick="toggleSection('sls')">
+          <span>Daftar per SLS (<span id="slsGroupCount">0</span>)<span class="header-issue-badge" id="slsIssueBadge" style="display:none;">0</span></span>
+          <div class="rumah-header-actions">
+            <button class="sls-analyze-btn" onclick="event.stopPropagation();showSLSCheckReport()" title="Cek nomor ganda &amp; nomor yang belum ada di tiap SLS">
+              <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              Cek Nomor
+            </button>
+            <svg class="icon icon-sm chev" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+        </div>
+        <div class="section-body collapsed" id="slsListSection"></div>
       </div>
     </div>
   </div>
@@ -1592,7 +1711,7 @@ function togglePanel(){
 
 function toggleSection(name, forceOpen){
   const header=document.getElementById(name+'Header');
-  const bodyId = name==='boundary' ? 'boundaryList' : name==='detail' ? 'formSection' : 'listSection';
+  const bodyId = name==='boundary' ? 'boundaryList' : name==='detail' ? 'formSection' : name==='sls' ? 'slsListSection' : 'listSection';
   const body=document.getElementById(bodyId);
   let collapsed;
   if(forceOpen===true) collapsed=false;
@@ -1648,8 +1767,17 @@ function renderForm(){
         <button class="status-btn done ${h.status==='done'?'active':''}" onclick="setStatus(${h.id},'done')"><svg class="icon icon-sm" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Sudah</button>
         <button class="status-btn todo ${h.status==='todo'?'active':''}" onclick="setStatus(${h.id},'todo')"><svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Belum</button>
       </div>
-      <label>No. Bangunan <span style="font-size:10px;color:#8a7a70;font-weight:400;">(No B)</span></label>
-      <input id="f_no" value="${esc(h.no)}" placeholder="contoh: 014">
+      <div style="display:flex;gap:8px;">
+        <div style="flex:1;">
+          <label>No. KK <span style="font-size:10px;color:#8a7a70;font-weight:400;">(nomor Keluarga)</span></label>
+          <input id="f_no_kk" value="${esc(h.no_kk||kkIdx)}" placeholder="contoh: 1" type="text">
+        </div>
+        <div style="flex:1;">
+          <label>No. Bangunan <span style="font-size:10px;color:#8a7a70;font-weight:400;">(No B)</span></label>
+          <input id="f_no" value="${esc(h.no)}" placeholder="contoh: 014" oninput="checkNoDuplicateLive(${h.id})">
+        </div>
+      </div>
+      <div class="no-suggest-hint" id="noSuggestHint"></div>
       <label>Nama Kepala Keluarga</label>
       <input id="f_kk" value="${esc(h.kk)}" placeholder="contoh: Budi Santoso">
       <label>No. HP Responden</label>
@@ -1680,7 +1808,7 @@ function renderForm(){
       </div>
     </div>`;
   setDirty(false);
-  ['f_no','f_kk','f_hp','f_jumlah','f_jenis','f_catatan'].forEach(id=>{
+  ['f_no_kk','f_no','f_kk','f_hp','f_jumlah','f_jenis','f_catatan'].forEach(id=>{
     const el=document.getElementById(id);
     if(!el) return;
     el.addEventListener('input',()=>{
@@ -1690,6 +1818,39 @@ function renderForm(){
     });
     el.addEventListener('change',()=>{ setDirty(true); });
   });
+  checkNoDuplicateLive(h.id);
+}
+
+// Menampilkan saran nomor bangunan berikutnya yang masih kosong di SLS ini,
+// dan memperingatkan langsung jika nomor yang sedang diketik sudah dipakai rumah lain di SLS yang sama.
+function checkNoDuplicateLive(id){
+  const hint=document.getElementById('noSuggestHint');
+  if(!hint) return;
+  const h=houses.find(x=>x.id===id);
+  if(!h) return;
+  const inputEl=document.getElementById('f_no');
+  const curNo=(inputEl?inputEl.value:h.no||'').trim();
+  const slsKey=h.sls_name&&h.sls_name.trim()?h.sls_name.trim():'__UNASSIGNED__';
+  const suggestion=suggestNextNo(h.sls_name);
+  const dupWith=curNo?houses.filter(o=>o.id!==h.id
+    &&(o.sls_name&&o.sls_name.trim()?o.sls_name.trim():'__UNASSIGNED__')===slsKey
+    &&(o.no||'').trim().toLowerCase()===curNo.toLowerCase()):[];
+  if(dupWith.length>0){
+    hint.innerHTML=`<span style="color:var(--red);font-weight:700;">⚠ No. ${esc(curNo)} sudah dipakai oleh ${esc(dupWith.map(o=>o.kk||'(tanpa nama)').join(', '))} di SLS ini.</span>
+      <button type="button" onclick="fillSuggestedNo(${h.id},${suggestion})">Pakai No. ${suggestion}</button>`;
+  } else {
+    hint.innerHTML=`<span>💡 Nomor berikutnya yang masih kosong di SLS ini: <b>${suggestion}</b></span>
+      ${curNo?'':`<button type="button" onclick="fillSuggestedNo(${h.id},${suggestion})">Pakai No. ${suggestion}</button>`}`;
+  }
+}
+
+function fillSuggestedNo(id,val){
+  const inputEl=document.getElementById('f_no');
+  if(inputEl){
+    inputEl.value=String(val);
+    setDirty(true);
+    checkNoDuplicateLive(id);
+  }
 }
 
 function redetectSLS(id){
@@ -1707,6 +1868,7 @@ function redetectSLS(id){
   if(!detected) showToast('Titik ini berada di luar semua batas SLS yang sudah digambar.','warn');
   else showToast('SLS terdeteksi: '+detected,'success');
   setDirty(true);
+  checkNoDuplicateLive(id);
 }
 
 function validateJumlahField(el){
@@ -1736,6 +1898,7 @@ function setStatus(id,status){
 function saveHouse(id){
   const h=houses.find(x=>x.id===id);
   if(!h) return;
+  const no_kk=document.getElementById('f_no_kk')?.value.trim()||'';
   const no=document.getElementById('f_no').value.trim();
   const kk=document.getElementById('f_kk').value.trim();
   const hp=document.getElementById('f_hp')?.value.trim()||'';
@@ -1745,6 +1908,7 @@ function saveHouse(id){
 
   // ===== VALIDATION =====
   const errs=[];
+  if(!no_kk) errs.push('Nomor KK wajib diisi.');
   if(!no) errs.push('Nomor Bangunan wajib diisi.');
   if(!kk) errs.push('Nama Kepala Keluarga wajib diisi.');
   let jumlah=jumlahRaw;
@@ -1761,12 +1925,20 @@ function saveHouse(id){
   if(errs.length>0){
     showToast(errs[0],'error');
     const jBad=jumlahRaw===''||!Number.isInteger(Number(jumlahRaw))||Number(jumlahRaw)<0||Number(jumlahRaw)>50;
-    markFieldErrors({no:!no,kk:!kk,jumlah:jBad});
+    markFieldErrors({no:!no,no_kk:!no_kk,kk:!kk,jumlah:jBad});
     return;
   }
   clearFieldErrors();
 
-  h.no=no; h.kk=kk; h.jumlah=jumlah; h.catatan=catatan; h.hp=hp; h.jenis_bangunan=jenis_bangunan;
+  const slsKeyChk=h.sls_name&&h.sls_name.trim()?h.sls_name.trim():'__UNASSIGNED__';
+  const dupCheck=houses.filter(o=>o.id!==h.id
+    &&(o.sls_name&&o.sls_name.trim()?o.sls_name.trim():'__UNASSIGNED__')===slsKeyChk
+    &&(o.no||'').trim().toLowerCase()===no.toLowerCase());
+  if(dupCheck.length>0){
+    showToast('Perhatian: No. Bangunan '+no+' sudah dipakai rumah lain di SLS yang sama.','warn',5000);
+  }
+
+  h.no_kk=no_kk; h.no=no; h.kk=kk; h.jumlah=jumlah; h.catatan=catatan; h.hp=hp; h.jenis_bangunan=jenis_bangunan;
   // Refresh ikon marker dengan no Bangunan & warna SLS terbaru
   h.marker.setIcon(makeIcon(h.status, h._unsynced, h.sls_name, h.no));
   h.marker.bindPopup(popupContent(h));
@@ -1792,14 +1964,14 @@ function saveHouse(id){
 }
 
 function markFieldErrors(map){
-  ['no','kk','jumlah'].forEach(k=>{
+  ['no_kk','no','kk','jumlah'].forEach(k=>{
     const el=document.getElementById('f_'+k);
     if(!el) return;
     el.style.borderColor = map[k] ? 'var(--red)' : '';
   });
 }
 function clearFieldErrors(){
-  ['no','kk','jumlah'].forEach(k=>{
+  ['no_kk','no','kk','jumlah'].forEach(k=>{
     const el=document.getElementById('f_'+k);
     if(el) el.style.borderColor='';
   });
@@ -1912,6 +2084,7 @@ function renderList(filter){
       else msg='Tidak ada hasil pencarian.';
     }
     section.innerHTML=`<div class="empty-note">${msg}</div>`;
+    renderSLSList();
     return;
   }
   section.innerHTML=list.map((h)=>{
@@ -1925,6 +2098,233 @@ function renderList(filter){
       </div>
     </div>`;
   }).join('');
+  renderSLSList();
+}
+
+// ===== DAFTAR & ANALISIS PER SLS =====
+// Mengelompokkan seluruh rumah berdasarkan nama SLS (termasuk yang belum masuk SLS manapun)
+function groupHousesBySLS(){
+  const map={};
+  houses.forEach(h=>{
+    const key=h.sls_name&&h.sls_name.trim()?h.sls_name.trim():'__UNASSIGNED__';
+    if(!map[key]) map[key]=[];
+    map[key].push(h);
+  });
+  const names=Object.keys(map).filter(k=>k!=='__UNASSIGNED__').sort((a,b)=>a.localeCompare(b,'id'));
+  if(map['__UNASSIGNED__']) names.push('__UNASSIGNED__');
+  return names.map(key=>({
+    key,
+    label:key==='__UNASSIGNED__'?'Belum masuk SLS':key,
+    color:key==='__UNASSIGNED__'?DEFAULT_SLS_COLOR:getSLSColor(key),
+    houses:map[key]
+  }));
+}
+
+// Ambil bagian angka murni dari nomor bangunan (mis. "014" -> 14, "A-07" -> 7).
+// Mengembalikan null jika sama sekali tidak ada angka di dalamnya.
+function parseNoNumeric(no){
+  if(no===undefined||no===null) return null;
+  const m=String(no).trim().match(/\d+/);
+  if(!m) return null;
+  return parseInt(m[0],10);
+}
+
+// Analisis satu grup SLS: cari nomor ganda (double) dan nomor yang hilang (gap) dalam urutan.
+function analyzeGroup(group){
+  const byNo={};
+  const numeric=[];
+  let emptyCount=0, nonNumericCount=0;
+  group.houses.forEach(h=>{
+    const raw=(h.no||'').toString().trim();
+    if(!raw){ emptyCount++; return; }
+    const key=raw.toLowerCase();
+    if(!byNo[key]) byNo[key]=[];
+    byNo[key].push(h);
+    const n=parseNoNumeric(raw);
+    if(n===null) nonNumericCount++;
+    else numeric.push(n);
+  });
+  const duplicates=Object.keys(byNo).filter(k=>byNo[k].length>1).map(k=>({no:byNo[k][0].no,houses:byNo[k]}));
+  let missing=[];
+  if(numeric.length>0){
+    const uniq=new Set(numeric);
+    const min=Math.min(...numeric), max=Math.max(...numeric);
+    for(let i=min;i<=max;i++){ if(!uniq.has(i)) missing.push(i); }
+  }
+  const done=group.houses.filter(h=>h.status==='done').length;
+  return {
+    label:group.label,color:group.color,total:group.houses.length,done,
+    todo:group.houses.length-done,duplicates,missing,emptyCount,nonNumericCount
+  };
+}
+
+function analyzeAllSLS(){
+  return groupHousesBySLS().map(analyzeGroup);
+}
+
+// Saran nomor bangunan berikutnya yang masih kosong dalam satu SLS (untuk mencegah nomor ganda saat input).
+function suggestNextNo(slsName){
+  const key=slsName&&slsName.trim()?slsName.trim():'__UNASSIGNED__';
+  const nums=houses
+    .filter(h=>(h.sls_name&&h.sls_name.trim()?h.sls_name.trim():'__UNASSIGNED__')===key)
+    .map(h=>parseNoNumeric(h.no)).filter(n=>n!==null);
+  if(nums.length===0) return 1;
+  const used=new Set(nums);
+  const max=Math.max(...nums);
+  for(let i=1;i<=max;i++){ if(!used.has(i)) return i; }
+  return max+1;
+}
+
+function renderSLSList(){
+  const body=document.getElementById('slsListSection');
+  const countEl=document.getElementById('slsGroupCount');
+  const issueBadge=document.getElementById('slsIssueBadge');
+  if(!body) return;
+  const groups=groupHousesBySLS();
+  if(countEl) countEl.textContent=groups.length;
+  if(houses.length===0){
+    body.innerHTML='<div class="empty-note">Belum ada rumah yang ditandai.</div>';
+    if(issueBadge) issueBadge.style.display='none';
+    return;
+  }
+  let totalIssues=0;
+  const html=groups.map(g=>{
+    const analysis=analyzeGroup(g);
+    const dupNos=new Set(analysis.duplicates.map(d=>String(d.no).toLowerCase().trim()));
+    const groupIssues=analysis.duplicates.length+analysis.missing.length;
+    totalIssues+=groupIssues;
+    const sorted=[...g.houses].sort((a,b)=>{
+      const na=parseNoNumeric(a.no), nb=parseNoNumeric(b.no);
+      if(na!==null&&nb!==null) return na-nb;
+      if(na!==null) return -1;
+      if(nb!==null) return 1;
+      return (a.no||'').localeCompare(b.no||'',undefined,{numeric:true});
+    });
+    const rows=sorted.map((h,i)=>{
+      const isDup=dupNos.has(String(h.no||'').toLowerCase().trim())&&h.no;
+      const noLabel=h.no?esc(String(h.no)):'(tanpa nomor)';
+      const kkLabel=h.kk?esc(h.kk):'(tanpa nama)';
+      return `<div class="sls-row ${isDup?'dup':''}" onclick="focusHouse(${h.id})">
+        <div class="urutan">${i+1}</div>
+        <div class="sls-row-txt">
+          <div class="sls-row-no">No. ${noLabel}</div>
+          <div class="sls-row-kk">${kkLabel}</div>
+        </div>
+        ${isDup?'<span class="sls-row-dupbadge">Ganda</span>':''}
+      </div>`;
+    }).join('') || '<div class="sls-group-empty">Belum ada rumah di SLS ini.</div>';
+    return `<details class="sls-group" open>
+      <summary>
+        <div class="sls-group-dot" style="background:${g.color}"></div>
+        <div class="sls-group-name">${esc(g.label)}</div>
+        <div class="sls-group-stats">
+          <span class="sls-chip">${analysis.total}</span>
+          <span class="sls-chip done">${analysis.done} sudah</span>
+          <span class="sls-chip todo">${analysis.todo} belum</span>
+          ${groupIssues>0?`<span class="sls-chip issue">⚠ ${groupIssues}</span>`:''}
+        </div>
+        <svg class="icon icon-sm chev" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+      </summary>
+      <div class="sls-group-body">${rows}</div>
+    </details>`;
+  }).join('');
+  body.innerHTML=html;
+  if(issueBadge){
+    issueBadge.style.display=totalIssues>0?'inline-flex':'none';
+    issueBadge.textContent=totalIssues;
+  }
+}
+
+// Modal informasi generik (reusable untuk laporan analisis nomor)
+function showInfoModal(title,bodyHtml,footerHtml){
+  const o=document.createElement('div');
+  o.className='info-modal-overlay';
+  o.innerHTML=`<div class="info-modal-box">
+    <div class="info-modal-head">
+      <h3>${esc(title)}</h3>
+      <button class="info-modal-close" aria-label="Tutup"><svg class="icon icon-sm" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="info-modal-body">${bodyHtml}</div>
+    ${footerHtml?`<div class="info-modal-foot">${footerHtml}</div>`:''}
+  </div>`;
+  document.body.appendChild(o);
+  const close=()=>{ if(document.body.contains(o)) document.body.removeChild(o); };
+  o.querySelector('.info-modal-close').addEventListener('click',close);
+  o.addEventListener('click',e=>{ if(e.target===o) close(); });
+  return {overlay:o,close};
+}
+
+// Bangun & tampilkan laporan: nomor ganda + nomor yang belum ada (hilang), per SLS
+function buildSLSReportText(analyses){
+  const tgl=new Date().toLocaleString('id-ID');
+  let txt=`LAPORAN CEK NOMOR PER SLS\n`;
+  txt+=`Petugas : ${currentPetugas?.name||'-'} (${currentPetugas?.code||'-'})\n`;
+  txt+=`Tanggal : ${tgl}\n`;
+  txt+=`========================================\n\n`;
+  analyses.forEach(a=>{
+    txt+=`SLS: ${a.label}  (Total ${a.total} | Sudah ${a.done} | Belum ${a.todo})\n`;
+    if(a.duplicates.length===0&&a.missing.length===0&&a.emptyCount===0&&a.nonNumericCount===0){
+      txt+=`  - Tidak ditemukan masalah nomor.\n`;
+    } else {
+      if(a.duplicates.length>0){
+        a.duplicates.forEach(d=>{
+          txt+=`  - GANDA: No. ${d.no} dipakai ${d.houses.length}x oleh: ${d.houses.map(h=>h.kk||'(tanpa nama)').join(', ')}\n`;
+        });
+      }
+      if(a.missing.length>0){
+        txt+=`  - HILANG (belum ada): ${a.missing.join(', ')}\n`;
+      }
+      if(a.emptyCount>0){
+        txt+=`  - Ada ${a.emptyCount} rumah belum diberi nomor bangunan.\n`;
+      }
+      if(a.nonNumericCount>0){
+        txt+=`  - Ada ${a.nonNumericCount} nomor tanpa format angka (tidak dicek dalam urutan).\n`;
+      }
+    }
+    txt+=`\n`;
+  });
+  return txt;
+}
+
+function showSLSCheckReport(){
+  const analyses=analyzeAllSLS();
+  if(analyses.length===0){
+    showToast('Belum ada data rumah/SLS untuk dicek.','warn');
+    return;
+  }
+  const blocks=analyses.map(a=>{
+    const hasIssue=a.duplicates.length>0||a.missing.length>0||a.emptyCount>0||a.nonNumericCount>0;
+    let inner='';
+    if(!hasIssue){
+      inner=`<div class="info-modal-empty"><svg class="icon icon-sm" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Nomor urut rapi, tidak ada yang ganda maupun hilang.</div>`;
+    } else {
+      a.duplicates.forEach(d=>{
+        inner+=`<div class="info-issue-line"><span class="tag dup">Ganda</span><span>No. <b>${esc(String(d.no))}</b> dipakai ${d.houses.length}x — ${esc(d.houses.map(h=>h.kk||'(tanpa nama)').join(', '))}</span></div>`;
+      });
+      if(a.missing.length>0){
+        inner+=`<div class="info-issue-line"><span class="tag missing">Hilang</span><span>Nomor belum ada: <b>${esc(a.missing.join(', '))}</b></span></div>`;
+      }
+      if(a.emptyCount>0){
+        inner+=`<div class="info-issue-line"><span class="tag warn">Kosong</span><span>${a.emptyCount} rumah belum diberi nomor bangunan.</span></div>`;
+      }
+      if(a.nonNumericCount>0){
+        inner+=`<div class="info-issue-line"><span class="tag warn">Format</span><span>${a.nonNumericCount} nomor bukan format angka, tidak dihitung dalam urutan.</span></div>`;
+      }
+    }
+    return `<div class="info-modal-sls-block">
+      <div class="info-modal-sls-title"><span class="sls-group-dot" style="background:${a.color}"></span>${esc(a.label)}</div>
+      ${inner}
+    </div>`;
+  }).join('');
+  const {close}=showInfoModal('Cek Nomor Ganda &amp; Hilang',blocks,
+    `<button class="danger" id="btnCloseReport">Tutup</button>
+     <button class="primary" id="btnDownloadReport"><svg class="icon icon-sm" viewBox="0 0 24 24" style="margin-right:5px;vertical-align:-2px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Unduh Laporan</button>`);
+  document.getElementById('btnCloseReport').addEventListener('click',close);
+  document.getElementById('btnDownloadReport').addEventListener('click',()=>{
+    const txt=buildSLSReportText(analyses);
+    downloadBlob(txt,`cek-nomor-sls-${new Date().toISOString().slice(0,10)}.txt`,'text/plain;charset=utf-8;');
+    showToast('Laporan cek nomor berhasil diunduh.','success');
+  });
 }
 
 function focusHouse(id){
