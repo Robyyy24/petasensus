@@ -1844,11 +1844,11 @@ function renderForm(){
         </div>
       </div>
       <div class="no-suggest-hint" id="noSuggestHint"></div>
-      <label>Nama Kepala Keluarga</label>
+      <label>Nama Kepala Keluarga <span style="font-size:10px;color:#8a7a70;font-weight:400;">(opsional)</span></label>
       <input id="f_kk" value="${esc(h.kk)}" placeholder="contoh: Budi Santoso">
       <label>No. HP Responden</label>
       <input id="f_hp" type="tel" value="${esc(h.hp)}" placeholder="contoh: 08123456789">
-      <label>Jumlah Anggota Keluarga</label>
+      <label>Jumlah Anggota Keluarga <span style="font-size:10px;color:#8a7a70;font-weight:400;">(opsional)</span></label>
       <input id="f_jumlah" type="number" min="0" max="50" value="${esc(h.jumlah)}" placeholder="contoh: 4">
       <label>Jenis Bangunan</label>
       <select id="f_jenis">
@@ -1973,14 +1973,11 @@ function saveHouse(id){
   const catatan=document.getElementById('f_catatan').value.trim();
 
   // ===== VALIDATION =====
+  // Semua field bersifat opsional (boleh dikosongkan). Hanya format angka
+  // pada Jumlah Anggota Keluarga yang tetap dicek kalau field itu diisi.
   const errs=[];
-  if(!no_kk) errs.push('Nomor KK wajib diisi.');
-  if(!no) errs.push('Nomor Bangunan wajib diisi.');
-  if(!kk) errs.push('Nama Kepala Keluarga wajib diisi.');
   let jumlah=jumlahRaw;
-  if(jumlahRaw===''){
-    errs.push('Jumlah anggota keluarga wajib diisi.');
-  } else {
+  if(jumlahRaw!==''){
     const n=Number(jumlahRaw);
     if(!Number.isInteger(n) || n<0 || n>50){
       errs.push('Jumlah anggota keluarga harus berupa angka bulat antara 0-50.');
@@ -1990,16 +1987,16 @@ function saveHouse(id){
   }
   if(errs.length>0){
     showToast(errs[0],'error');
-    const jBad=jumlahRaw===''||!Number.isInteger(Number(jumlahRaw))||Number(jumlahRaw)<0||Number(jumlahRaw)>50;
-    markFieldErrors({no:!no,no_kk:!no_kk,kk:!kk,jumlah:jBad});
+    const jBad=jumlahRaw!==''&&(!Number.isInteger(Number(jumlahRaw))||Number(jumlahRaw)<0||Number(jumlahRaw)>50);
+    markFieldErrors({no:false,no_kk:false,kk:false,jumlah:jBad});
     return;
   }
   clearFieldErrors();
 
   const slsKeyChk=h.sls_name&&h.sls_name.trim()?h.sls_name.trim():'__UNASSIGNED__';
-  const dupCheck=houses.filter(o=>o.id!==h.id
+  const dupCheck=no?houses.filter(o=>o.id!==h.id
     &&(o.sls_name&&o.sls_name.trim()?o.sls_name.trim():'__UNASSIGNED__')===slsKeyChk
-    &&(o.no||'').trim().toLowerCase()===no.toLowerCase());
+    &&(o.no||'').trim().toLowerCase()===no.toLowerCase()):[];
   if(dupCheck.length>0){
     showToast('Perhatian: No. Bangunan '+no+' sudah dipakai rumah lain di SLS yang sama.','warn',5000);
   }
